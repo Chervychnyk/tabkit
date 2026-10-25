@@ -24,7 +24,7 @@ export default defineBackground(() => {
     await allowLocalModels();
     // Bookmarks, history, downloads and recently closed are optional; let the user choose them first.
     // Skipped in e2e builds: the new tab steals keyboard focus from the page under test.
-    if (reason === 'install' && !import.meta.env.WXT_E2E) browser.runtime.openOptionsPage();
+    if (reason === 'install' && !import.meta.env.WXT_E2E) browser.tabs.create({ url: browser.runtime.getURL('/options.html#sources') });
     for (const t of await browser.tabs.query({}))
       browser.scripting.executeScript({ target: { tabId: t.id! }, files: ['/content-scripts/hotkey.js'] }).catch(() => {});
   });
