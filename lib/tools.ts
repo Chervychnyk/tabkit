@@ -27,9 +27,25 @@ export function withTone(e: Emoji, tone: number): string {
 
 export function searchEmoji<T extends { key: string }>(list: T[], text: string, limit = 100): T[] {
   const found = fuzzysort.go(text, list, { key: 'key', limit }).map((r) => r.obj);
-  // Exact keyword hits ("hello" → 👋) beat fuzzy ones; sort is stable so fuzzy order survives within each group.
-  const exact = (e: T) => ` ${e.key.toLowerCase()} `.includes(` ${text.toLowerCase()} `);
-  return found.sort((a, b) => +exact(b) - +exact(a));
+  // Exact keyword hits ("hello" → 👋) beat word-prefix hits ("cof" → ☕), which beat fuzzy ones; sort is stable so
+  // fuzzy order survives within each rank.
+  const q = ` ${text.toLowerCase()}`;
+  const rank = (e: T) => { const k = ` ${e.key.toLowerCase()} `; return k.includes(`${q} `) ? 2 : k.includes(q) ? 1 : 0; };
+  return found.sort((a, b) => rank(b) - rank(a));
+}
+
+/** Up/Down in a grid split into sections (each starting on a new row): the index one row away, or i at the edge. */
+export function gridStep(starts: number[], total: number, cols: number, i: number, dir: 1 | -1): number {
+  const s = starts.findLastIndex((x) => x <= i);
+  const start = starts[s]!, end = starts[s + 1] ?? total, col = (i - start) % cols;
+  if (dir === 1) {
+    if (i - col + cols < end) return Math.min(i + cols, end - 1);
+    return s + 1 < starts.length ? Math.min(end + col, (starts[s + 2] ?? total) - 1) : i;
+  }
+  if (i - start >= cols) return i - cols;
+  if (s === 0) return i;
+  const prev = starts[s - 1]!;
+  return Math.min(prev + Math.floor((start - 1 - prev) / cols) * cols + col, start - 1);
 }
 
 export interface Entry { title: string; url: string; date: number }

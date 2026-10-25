@@ -5,7 +5,7 @@ import fuzzysort from 'fuzzysort';
 import { blobToDataUrl } from './page.ts';
 import { looksLikeUrl } from './query.ts';
 import { loadSettings } from './settings.ts';
-import { parseFeed, searchEmoji, TONES, withTone, WMO, type Tool } from './tools.ts';
+import { parseFeed, searchEmoji, withTone, WMO, type Tool } from './tools.ts';
 import type { Item } from './types.ts';
 
 type Result = { copy?: string; query?: string } | void;
@@ -39,8 +39,8 @@ export async function toolDelete(item: Item) {
 
 // --- Emoji ---
 
-const HANDS = ['✋', '✋🏻', '✋🏼', '✋🏽', '✋🏾', '✋🏿'];
-const RECENT_MAX = 24;
+const RECENT_MAX = 32;
+const GROUPS = ['Smileys & Emotion', 'People & Body', 'Component', 'Animals & Nature', 'Food & Drink', 'Travel & Places', 'Activities', 'Objects', 'Symbols', 'Flags'];
 
 let emoji: ((typeof data)[number] & { key: string; code: string })[] | undefined;
 
@@ -58,20 +58,19 @@ function emojiList() {
 async function emojiItems(text: string): Promise<Item[]> {
   const [tone, recent] = await Promise.all([get('local', 'emojiTone', 0), get<string[]>('local', 'emojiRecent', [])]);
   const list = emojiList();
-  const toItem = (e: (typeof list)[number]): Item => {
+  const toItem = (e: (typeof list)[number], group?: string, id = `em:${e.hexcode}`): Item => {
     const char = withTone(e, tone);
-    return { id: `em:${e.hexcode}`, kind: 'emoji', title: e.label, icon: char, copy: char, data: e.code };
+    return { id, kind: 'emoji', title: e.label, icon: char, copy: char, data: e.code, group };
   };
-  if (text) return searchEmoji(list, text, LIMIT).map(toItem);
+  if (text) return searchEmoji(list, text, LIMIT).map((e) => toItem(e));
   const byHex = new Map(list.map((e) => [e.hexcode, e]));
-  const recents = recent.flatMap((h) => byHex.get(h) ?? []);
-  const rest = list.filter((e) => !recent.includes(e.hexcode)).slice(0, LIMIT * 2);
-  return [{ id: 'em:tone', kind: 'emoji', title: 'Skin tone · Enter to change', icon: HANDS[tone] }, ...[...recents, ...rest].map(toItem)];
+  // Recents also stay in their category, so they need their own ids.
+  const recents = recent.flatMap((h) => byHex.get(h) ?? []).map((e) => toItem(e, 'Recently used', `em:${e.hexcode}:recent`));
+  return [...recents, ...list.map((e) => toItem(e, GROUPS[e.group!]))];
 }
 
 async function emojiRun(item: Item, alt: boolean): Promise<Result> {
-  if (item.id === 'em:tone') return void (await set('local', 'emojiTone', ((await get('local', 'emojiTone', 0)) + 1) % TONES.length));
-  const hex = item.id.slice(3);
+  const hex = item.id.split(':')[1]!;
   const recent = await get<string[]>('local', 'emojiRecent', []);
   await set('local', 'emojiRecent', [hex, ...recent.filter((h) => h !== hex)].slice(0, RECENT_MAX));
   return { copy: alt ? `:${item.data}:` : item.copy };

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseFeed, parseTool, searchEmoji, withTone } from './tools.ts';
+import { gridStep, parseFeed, parseTool, searchEmoji, withTone } from './tools.ts';
 
 test('parseTool', () => {
   assert.deepEqual(parseTool(':em'), { tool: 'emoji', text: '' });
@@ -24,6 +24,22 @@ test('emoji tones and search', () => {
   assert.equal(searchEmoji(list, 'hello')[0], list[1]);
   const hug = { key: 'people hugging hellos' };
   assert.equal(searchEmoji([hug, list[1]!], 'hello')[0], list[1]);
+  const cup = { key: 'hot beverage coffee' };
+  assert.equal(searchEmoji([{ key: 'cat face' }, cup], 'cof')[0], cup);
+});
+
+test('gridStep moves a row within and across sections', () => {
+  // 3 columns; sections [0..4] (rows 0-2, 3-4) and [5..11] (rows 5-7, 8-10, 11)
+  const starts = [0, 5], total = 12;
+  assert.equal(gridStep(starts, total, 3, 1, 1), 4);
+  assert.equal(gridStep(starts, total, 3, 2, 1), 4); // short last row clamps
+  assert.equal(gridStep(starts, total, 3, 4, 1), 6); // into next section, same column
+  assert.equal(gridStep(starts, total, 3, 9, 1), 11);
+  assert.equal(gridStep(starts, total, 3, 11, 1), 11); // bottom edge
+  assert.equal(gridStep(starts, total, 3, 7, -1), 4); // up into short last row, clamped
+  assert.equal(gridStep(starts, total, 3, 5, -1), 3);
+  assert.equal(gridStep(starts, total, 3, 1, -1), 1); // top edge
+  assert.equal(gridStep([0], 5, 3, 1, 1), 4);
 });
 
 test('parseFeed: RSS', () => {

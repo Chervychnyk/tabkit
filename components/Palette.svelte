@@ -3,7 +3,7 @@
   import Chat from '@/components/Chat.svelte';
   import { search, segments } from '@/lib/query';
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
-  import { parseTool, type Tool } from '@/lib/tools';
+  import { gridStep, parseTool, type Tool } from '@/lib/tools';
   import { toast } from '@/lib/toast';
   import type { Filter, Item, Message, TabAction } from '@/lib/types';
 
@@ -31,10 +31,13 @@
   const SOURCES: Partial<Record<Filter, string>> = { bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed' };
   const HINTS: [string, string][] = [[':t', 'tabs'], [':b', 'bookmarks'], [':h', 'history'], [':ai', 'AI chat'], [':em', 'emoji'], [':wx', 'weather'], [':', 'all prefixes']];
   const EMOJI_COLS = 10;
+  const SKIN_TONES: [string, string][] = [
+    ['Default', '#ffc83d'], ['Light', '#f7dece'], ['Medium-Light', '#e0bb95'], ['Medium', '#bf8f68'], ['Medium-Dark', '#9b643d'], ['Dark', '#594539'],
+  ];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const TOOL_KINDS = new Set<Item['kind']>(['emoji', 'todo', 'feed', 'weather']);
   const TOOL_HINTS: Record<Tool, string> = {
-    emoji: '↵ copy · ⇧↵ copy :code: · Esc close',
+    emoji: '←↑↓→ move · ↵ copy · ⇧↵ copy :code: · Esc back to tools',
     todo: '↵ add / check off · {mod}⌫ delete · Esc close',
     rss: '↵ open · paste a feed URL to add it · {mod}⌫ on a feed removes it · Esc close',
     weather: 'type a city to add it · ↵ copy · {mod}⌫ remove · Esc close',
@@ -61,6 +64,19 @@
   const results = $derived(tool ? toolResults : search(items, query, chip));
   const emojiGrid = $derived(tool?.tool === 'emoji');
   const grouped = $derived(!tool && chip !== 'tools');
+  // Emoji sections: index ranges of results sharing a group header (one headerless section while searching).
+  const sections = $derived(emojiGrid ? results.flatMap((r, i) => (i === 0 || r.group !== results[i - 1]!.group ? [{ start: i, group: r.group }] : []))
+    .map((x, k, a) => ({ ...x, items: results.slice(x.start, a[k + 1]?.start ?? results.length) })) : []);
+  let emojiTone = $state(0);
+  $effect(() => {
+    if (emojiGrid && !demo) browser.storage.local.get('emojiTone').then((r) => (emojiTone = (r.emojiTone as number | undefined) ?? 0));
+  });
+
+  function setTone(t: number) {
+    emojiTone = t;
+    browser.storage.local.set({ emojiTone: t }).then(() => toolRev++);
+    input.focus();
+  }
 
   // Tools are answered by the background (storage, network); debounce typing and drop stale replies.
   $effect(() => {
@@ -166,14 +182,18 @@
     const cur = results[sel];
     // A focused button (chip, row action, code Copy) gets its own Enter.
     if (e.key === 'Enter' && (e.target as Element).closest('button')) return;
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape' && emojiGrid) {
+      query = '';
+      chip = 'tools';
+      sel = 0;
+    } else if (e.key === 'Escape') close();
     else if (chatMode) {
       if (!chat?.key(e, mod)) return;
     } else if (qr) return;
     else if (emojiGrid && e.key === 'ArrowRight') select(sel + 1);
     else if (emojiGrid && e.key === 'ArrowLeft') select(sel - 1);
-    else if (emojiGrid && e.key === 'ArrowDown') select(sel + EMOJI_COLS);
-    else if (emojiGrid && e.key === 'ArrowUp') select(sel - EMOJI_COLS);
+    else if (emojiGrid && (e.key === 'ArrowDown' || e.key === 'ArrowUp'))
+      select(gridStep(sections.map((x) => x.start), results.length, EMOJI_COLS, sel, e.key === 'ArrowDown' ? 1 : -1));
     else if (e.key === 'ArrowDown') select(sel + 1);
     else if (e.key === 'ArrowUp') select(sel - 1);
     else if (e.key === 'Enter') activate(cur, !e.shiftKey);
@@ -236,15 +256,29 @@
     {:else if qr}
       <div class="qr">{@html qr}<p>Scan to open this page · Esc to close</p></div>
     {:else if emojiGrid}
+      {@const cur = results[sel]}
+      <div class="emoji-preview">
+        <span class="emoji-big">{cur?.icon ?? ''}</span>
+        <span class="emoji-name">{cur?.title ?? ''}</span>
+        {#if cur?.data}<button class="emoji-code" title="Copy :code: (⇧↵)" onclick={() => activate(cur, false)}>:{cur.data}:</button>{/if}
+        <span class="tones" role="group" aria-label="Skin tone">
+          {#each SKIN_TONES as [label, color], t}
+            <button title={label} aria-label={label} aria-pressed={t === emojiTone} class:on={t === emojiTone} style:background={color} onclick={() => setTone(t)}></button>
+          {/each}
+        </span>
+      </div>
       <ul id="tc-results" role="listbox" class="emoji-grid" bind:this={list} style:--cols={EMOJI_COLS}>
-        {#each results as item, i (item.id)}
-          <li id="tc-{i}" role="option" aria-selected={i === sel} aria-label={item.title} title={item.title} class:sel={i === sel}
-            onmousemove={() => (sel = i)} onclick={(e) => activate(item, !e.shiftKey)}>{item.icon}</li>
+        {#each sections as sec (sec.start + (sec.group ?? ''))}
+          {#if sec.group}<li class="group" role="presentation">{sec.group} <span>{sec.items.length}</span></li>{/if}
+          {#each sec.items as item, j (item.id)}
+            {@const i = sec.start + j}
+            <li id="tc-{i}" role="option" aria-selected={i === sel} aria-label={item.title} title={item.title} class:sel={i === sel}
+              onmousemove={() => (sel = i)} onclick={(e) => activate(item, !e.shiftKey)}>{item.icon}</li>
+          {/each}
         {:else}
-          <li class="empty">Loading…</li>
+          <li class="empty">{tool?.text ? 'No emoji found' : 'Loading…'}</li>
         {/each}
       </ul>
-      <div class="emoji-name">{results[sel]?.title ?? ''}{#if results[sel]?.data}<code>:{results[sel]?.data}:</code>{/if}</div>
     {:else}
     <ul id="tc-results" role="listbox" bind:this={list}>
       {#if SOURCES[chip] && missing.includes(chip)}
@@ -365,11 +399,20 @@
   .hints button { all: unset; cursor: pointer; color: var(--muted); }
   .hints button:hover, .hints button:focus-visible { color: var(--fg); }
   kbd { font: 11px ui-monospace, Menlo, monospace; color: var(--fg); background: var(--hl); padding: 1px 4px; border-radius: 4px; }
-  .emoji-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 2px; align-content: start; }
+  /* max-content rows: auto rows get squeezed below the emoji height once the grid overflows the panel */
+  .emoji-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-auto-rows: max-content; gap: 2px; align-content: start; }
   .emoji-grid li { justify-content: center; font-size: 22px; padding: 6px 0; min-height: 0; }
-  .emoji-grid li.empty { grid-column: 1 / -1; font-size: 14px; }
-  .emoji-name { flex: none; padding: 6px 14px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); min-height: 18px; }
-  .emoji-name code { margin-left: 8px; font: 11px ui-monospace, Menlo, monospace; }
+  .emoji-grid li.empty, .emoji-grid li.group { grid-column: 1 / -1; font-size: 14px; }
+  .emoji-grid li.group { justify-content: flex-start; gap: 6px; font-size: 11px; padding: 10px 6px 4px; }
+  .emoji-grid li.group span { font-weight: 400; letter-spacing: 0; }
+  .emoji-preview { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); min-height: 36px; }
+  .emoji-big { font-size: 30px; line-height: 36px; width: 36px; text-align: center; flex: none; }
+  .emoji-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .emoji-code { all: unset; cursor: pointer; flex: none; font: 11px ui-monospace, Menlo, monospace; color: var(--muted); padding: 2px 6px; border-radius: 4px; background: var(--hl); }
+  .emoji-code:hover, .emoji-code:focus-visible { color: var(--fg); }
+  .tones { flex: none; display: flex; gap: 4px; }
+  .tones button { all: unset; cursor: pointer; width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
+  .tones button.on, .tones button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   li.empty { color: var(--muted); cursor: default; justify-content: center; }
   img, .glyph, .swatch { width: 16px; height: 16px; flex: none; }
   .swatch { border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.4); }

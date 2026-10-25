@@ -32,8 +32,8 @@ Instant answers (just type; Enter copies): math (`sqrt(144) * 2`, `200 + 10%`, `
 timestamps, colors (`#f80`, `rgb(…)`, `hsl(…)`), bases (`0xff`, `10 to binary`), and the prefixes
 `:tx <text>` (case conversion), `:uuid`, `:pwd [length]`.
 
-Tools: `:em` emoji (Enter copies, Shift+Enter copies `:code:`, first row cycles skin tone, last 24
-picks on top) · `:todo` / `:td` to-do list (type to add, Enter checks off) · `:rss` reader (six preset
+Tools: `:em` emoji (grid grouped by category with a preview header and six skin-tone swatches; Enter
+copies, Shift+Enter copies `:code:`, Esc goes back to Tools, last 32 picks on top) · `:todo` / `:td` to-do list (type to add, Enter checks off) · `:rss` reader (six preset
 feeds, paste a feed URL to add one) · `:wx` weather via Open-Meteo (type a city to add, up to 15;
 type a saved city's name for its 7-day forecast; °C unless you pick °F in Settings). ⌘⌫ / Ctrl+Backspace deletes a to-do, feed or place.
 To-dos, feeds and places sync through `chrome.storage.sync`.

@@ -28,6 +28,8 @@ export interface Item {
   /** positions of the query's matched characters in title, for highlighting */
   hl?: readonly number[];
   data?: unknown;
+  /** tools: the section header this item sits under (emoji categories) */
+  group?: string;
 }
 
 export type Message =
