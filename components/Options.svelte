@@ -424,7 +424,9 @@
   .theme.on, .theme.on:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--text); border-color: transparent; }
   .swatch { width: 16px; height: 16px; border-radius: 50%; flex: none; background: var(--accent); box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.4); }
   .swatch.split { background: conic-gradient(#1c1c1e 0 50%, #ffffff 0); }
-  input[type='color'] { width: 44px; height: 32px; padding: 0; border: 1px solid var(--control); border-radius: 8px; background: none; cursor: pointer; }
+  input[type='color'] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--control); border-radius: 50%; background: none; cursor: pointer; overflow: hidden; }
+  input[type='color']::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type='color']::-webkit-color-swatch { border: 0; border-radius: 50%; }
   input[type='color']:disabled { cursor: default; opacity: 0.6; }
   .layouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .card { display: flex; flex-direction: column; gap: 2px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
