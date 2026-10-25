@@ -3,6 +3,7 @@
   import type { Browser } from 'wxt/browser';
   import type { ChatEvent, ChatMsg, ChatRequest } from '@/lib/ai';
   import { renderMarkdown } from '@/lib/markdown';
+  import { send as sendToBackground } from '@/lib/messages';
 
   let { prompt, tabId, clearPrompt, copy, openSettings }: {
     prompt: string;
@@ -26,7 +27,7 @@
   const current = $derived(targets?.find((t) => t.id === target));
 
   onMount(async () => {
-    const r = await browser.runtime.sendMessage({ type: 'ai-targets' });
+    const r = await sendToBackground({ type: 'ai-targets' });
     targets = r.targets;
     target = r.default;
     if (target) await loadHistory();

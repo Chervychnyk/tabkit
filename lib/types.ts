@@ -36,6 +36,9 @@ export interface Item {
   group?: string;
 }
 
+/** What running a row can hand back to the palette: text to copy, or a QR code to show. */
+export type RunResult = { copy?: string; qr?: string };
+
 export type Message =
   | { type: 'toggle' }
   | { type: 'load'; tabId?: number }

@@ -6,6 +6,7 @@
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
   import { activeChip, EMOJI_COLS, step, TOOL_KINDS, type PaletteEvent } from '@/lib/palette';
   import { parseTool, type Tool } from '@/lib/tools';
+  import { send } from '@/lib/messages';
   import { toast } from '@/lib/toast';
   import type { Filter, Item, Message, TabAction } from '@/lib/types';
 
@@ -116,21 +117,23 @@
     if (!t) return;
     const n = ++toolSeq;
     const timer = setTimeout(async () => {
-      const r = await send({ type: 'tool', tool: t.tool, text: t.text });
+      const r = await send({ type: 'tool', tool: t.tool, text: t.text }).catch((e: Error) => e);
       if (n !== toolSeq) return;
-      toolResults = Array.isArray(r) ? r : [];
-      if (r?.error) toast(r.error);
+      if (r instanceof Error) toast(r.message);
+      toolResults = r instanceof Error ? [] : r;
     }, t.text ? 200 : 0);
     return () => clearTimeout(timer);
   });
 
-  const send = (m: Message) => browser.runtime.sendMessage(m);
+  /** send(), with a failure shown as a toast; resolves to null then (a reply with nothing in it is undefined). */
+  const call = <T extends Message['type']>(m: Extract<Message, { type: T }>) => send(m).catch((e: Error) => (toast(e.message), null));
 
   async function load() {
-    const r = await send({ type: 'load', tabId });
+    const r = await call({ type: 'load', tabId });
+    if (!r) return;
     items = r.items;
     ctxTabId = r.tabId;
-    missing = r.missing ?? [];
+    missing = r.missing;
   }
 
   onMount(() => {
@@ -158,8 +161,8 @@
       return close();
     }
     if (TOOL_KINDS.has(item.kind) && !item.url) {
-      const r: { copy?: string; query?: string; error?: string } | undefined = await send({ type: 'tool-run', item, alt: !newTab });
-      if (r?.error) return toast(r.error);
+      const r = await call({ type: 'tool-run', item, alt: !newTab });
+      if (r === null) return;
       if (r?.copy !== undefined) {
         await copy(r.copy, 'Copied');
         return close();
@@ -169,8 +172,8 @@
       return input.focus();
     }
     if (item.command === 'color-picker') return pickColor();
-    const r: { copy?: string; qr?: string; error?: string } | undefined = await send({ type: 'run', item, tabId: ctxTabId!, newTab });
-    if (r?.error) return toast(r.error);
+    const r = await call({ type: 'run', item, tabId: ctxTabId!, newTab });
+    if (r === null) return;
     if (r?.qr) return void (qr = r.qr);
     if (r?.copy !== undefined) await copy(r.copy, 'Copied');
     close();
@@ -194,8 +197,7 @@
 
   async function tabAction(action: TabAction, item: Item) {
     if (demo) return;
-    const r: { error?: string } | undefined = await send({ type: 'tab-action', action, tabId: item.tabId! });
-    if (r?.error) return toast(r.error);
+    if ((await call({ type: 'tab-action', action, tabId: item.tabId! })) === null) return;
     toast(TAB_TOASTS[action](item));
     if (item.tabId === ctxTabId && (action === 'close' || action === 'new-window')) return close();
     await load();
@@ -205,7 +207,7 @@
   async function downloadAction(action: 'show' | 'copy' | 'erase', item: Item) {
     if (demo) return;
     if (action === 'copy') return copy(item.url ?? '', 'URL copied');
-    await send({ type: 'download-action', action, downloadId: item.downloadId! });
+    if ((await call({ type: 'download-action', action, downloadId: item.downloadId! })) === null) return;
     if (action === 'erase') {
       await load();
       select(sel);
@@ -213,7 +215,7 @@
   }
 
   function browseDownloads() {
-    send({ type: 'run', item: { id: 'downloads-page', kind: 'url', title: '', url: 'chrome://downloads' }, tabId: ctxTabId!, newTab: true });
+    call({ type: 'run', item: { id: 'downloads-page', kind: 'url', title: '', url: 'chrome://downloads' }, tabId: ctxTabId!, newTab: true });
     close();
   }
 
@@ -229,7 +231,7 @@
     if (fx?.do === 'close') close();
     else if (fx?.do === 'run') activate(fx.item, fx.newTab);
     else if (fx?.do === 'tab-close') tabAction('close', fx.item);
-    else if (fx?.do === 'tool-delete') send({ type: 'tool-delete', item: fx.item }).then(() => toolRev++);
+    else if (fx?.do === 'tool-delete') call({ type: 'tool-delete', item: fx.item }).then(() => toolRev++);
     return r;
   }
 
@@ -274,7 +276,7 @@
         tabId={ctxTabId}
         clearPrompt={() => (query = ':ai ')}
         {copy}
-        openSettings={() => { send({ type: 'open-settings' }); close(); }}
+        openSettings={() => { call({ type: 'open-settings' }); close(); }}
       />
     {:else if !tool}
       <div class="chips">
@@ -316,7 +318,7 @@
       {#if SOURCES[active] && missing.includes(active)}
         <li class="empty notice">
           {SOURCES[active]} access is off.
-          <button onclick={() => { send({ type: 'open-settings' }); close(); }}>Turn it on in Settings</button>
+          <button onclick={() => { call({ type: 'open-settings' }); close(); }}>Turn it on in Settings</button>
         </li>
       {/if}
       {#each results as item, i (item.id)}

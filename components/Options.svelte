@@ -6,6 +6,7 @@
     ACCENT_THEMES, chatTargets, DATA_SOURCES, hotkeyLabel, hotkeyOf, loadSettings, PROVIDERS, saveSettings, THEMES, themeStyle,
     type Layout, type Preset, type Settings,
   } from '@/lib/settings';
+  import { send } from '@/lib/messages';
   import { ENGINES } from '@/lib/query';
   import type { Filter, Item } from '@/lib/types';
 
@@ -110,11 +111,13 @@
 
   async function loadModels(id: string) {
     modelErrors[id] = '';
-    const r = await browser.runtime.sendMessage({ type: 'ai-models', provider: id, baseUrl: settings!.ai.providers[id]?.baseUrl, key: keys[id] });
-    if (Array.isArray(r)) {
+    try {
+      const r = await send({ type: 'ai-models', provider: id, baseUrl: settings!.ai.providers[id]?.baseUrl, key: keys[id] });
       models[id] = r;
       if (!provider(id).model && r[0]) provider(id).model = r[0];
-    } else modelErrors[id] = r?.error ?? 'Could not load models';
+    } catch (e) {
+      modelErrors[id] = (e as Error).message || 'Could not load models';
+    }
   }
 
   function addPreset() {

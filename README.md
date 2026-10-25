@@ -59,7 +59,8 @@ Spotlight / Notch layouts, the in-page shortcut, which filter tabs show, sites w
 (also the "Disable / enable the palette shortcut on this site" command), AI keys, models and presets.
 Everything except keys syncs through `chrome.storage.sync`.
 
-/background.ts` does all the browser API work, `lib/commands.ts` has the tab
+/background.ts` does all the browser API work (one handler per message; pages reach it through the typed
+`send()` in `lib/messages.ts`), `lib/commands.ts` has the tab
 commands, `lib/prefixes.ts` is the one table of `:` prefixes and their parse,
 `lib/query.ts` does the fuzzy ranking (both pure, tested), and
 `components/Palette.svelte` is the UI (its key and chip logic is the pure `step()` in `lib/palette.ts`), `lib/page.ts` has page commands and screenshots, and

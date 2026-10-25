@@ -1,3 +1,4 @@
+import { send } from '@/lib/messages';
 import { DEFAULT_SETTINGS, domainDisabled, matchesHotkey } from '@/lib/settings';
 
 // Always-on, tiny: only listens for the palette shortcut (⌘K / Ctrl+K by default). The palette is injected on demand.
@@ -21,7 +22,7 @@ export default defineContentScript({
         if (!browser.runtime?.id) return; // orphaned after an extension reload; let the fresh copy handle it
         e.preventDefault();
         e.stopPropagation();
-        browser.runtime.sendMessage({ type: 'toggle' }).catch(() => {});
+        send({ type: 'toggle' }).catch(() => {});
       },
       true,
     );

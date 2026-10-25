@@ -5,7 +5,7 @@ import { notify } from '@/lib/page';
 import { ago, fileSize } from '@/lib/query';
 import { DATA_SOURCES } from '@/lib/settings';
 import { toolDelete, toolItems, toolRun } from '@/lib/toolbox';
-import type { Item, Message } from '@/lib/types';
+import type { Item, Message, RunResult } from '@/lib/types';
 
 const HISTORY_DAYS = 90;
 const HISTORY_MAX = 3000;
@@ -29,8 +29,11 @@ export default defineBackground(() => {
       browser.scripting.executeScript({ target: { tabId: t.id! }, files: ['/content-scripts/hotkey.js'] }).catch(() => {});
   });
 
+  // A thrown error reaches send() (lib/messages.ts) as { error }, which throws it again on the caller's side.
   browser.runtime.onMessage.addListener((msg: Message, sender, reply) => {
-    handle(msg, sender).then(reply, (e) => reply({ error: e?.message ?? String(e) }));
+    if (!Object.hasOwn(HANDLERS, msg.type)) return false; // e.g. a stale content script from an older build
+    (HANDLERS[msg.type] as (m: Message, s: Browser.runtime.MessageSender) => Promise<unknown>)(msg, sender)
+      .then(reply, (e) => reply({ error: e?.message ?? String(e) }));
     return true;
   });
 });
@@ -51,36 +54,27 @@ async function toggle(tab: Browser.tabs.Tab) {
   }
 }
 
-async function handle(msg: Message, sender: Browser.runtime.MessageSender) {
-  switch (msg.type) {
-    case 'toggle':
-      if (sender.tab) await toggle(sender.tab);
-      return;
-    case 'load': {
-      const tabId = msg.tabId ?? sender.tab?.id;
-      return { ...(await load()), tabId };
-    }
-    case 'run':
-      return run(msg.item, await browser.tabs.get(msg.tabId), msg.newTab);
-    case 'tab-action':
-      return runTabAction(msg.action, msg.tabId);
-    case 'download-action':
-      // erase only drops the list entry; the file stays on disk
-      return msg.action === 'show' ? browser.downloads.show(msg.downloadId) : browser.downloads.erase({ id: msg.downloadId });
-    case 'tool':
-      return toolItems(msg.tool, msg.text);
-    case 'tool-run':
-      return toolRun(msg.item, msg.alt);
-    case 'tool-delete':
-      return toolDelete(msg.item);
-    case 'ai-targets':
-      return targets();
-    case 'ai-models':
-      return listModels(msg.provider, msg.baseUrl, msg.key);
-    case 'open-settings':
-      return browser.runtime.openOptionsPage();
-  }
-}
+type Handlers = { [K in Message['type']]: (msg: Extract<Message, { type: K }>, sender: Browser.runtime.MessageSender) => Promise<unknown> };
+
+// One handler per message type; what each resolves to is that message's reply (Replies below).
+const HANDLERS = {
+  toggle: async (_, sender) => void (sender.tab && (await toggle(sender.tab))),
+  load: async (msg, sender) => ({ ...(await load()), tabId: msg.tabId ?? sender.tab?.id }),
+  run: async (msg) => run(msg.item, await browser.tabs.get(msg.tabId), msg.newTab),
+  'tab-action': async (msg) => void (await runTabAction(msg.action, msg.tabId)),
+  // erase only drops the list entry; the file stays on disk
+  'download-action': async (msg) =>
+    void (await (msg.action === 'show' ? browser.downloads.show(msg.downloadId) : browser.downloads.erase({ id: msg.downloadId }))),
+  tool: (msg) => toolItems(msg.tool, msg.text),
+  'tool-run': (msg) => toolRun(msg.item, msg.alt),
+  'tool-delete': (msg) => toolDelete(msg.item),
+  'ai-targets': () => targets(),
+  'ai-models': (msg) => listModels(msg.provider, msg.baseUrl, msg.key),
+  'open-settings': () => browser.runtime.openOptionsPage(),
+} satisfies Handlers;
+
+/** The reply each message type resolves to. */
+export type Replies = { [K in Message['type']]: Awaited<ReturnType<(typeof HANDLERS)[K]>> };
 
 async function load(): Promise<{ items: Item[]; missing: string[] }> {
   const granted = new Set<string>((await browser.permissions.getAll()).permissions);
@@ -128,27 +122,31 @@ async function load(): Promise<{ items: Item[]; missing: string[] }> {
   return { items, missing };
 }
 
-async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean) {
+async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean): Promise<RunResult | void> {
   switch (item.kind) {
     case 'tab':
       await browser.tabs.update(item.tabId!, { active: true });
-      return browser.windows.update(item.windowId!, { focused: true });
+      return void (await browser.windows.update(item.windowId!, { focused: true }));
     case 'command': {
       const c = COMMANDS.find((c) => c.id === item.command);
-      if (!c?.deferred) return c?.run(ctx);
+      if (!c?.deferred) {
+        // Commands resolve to whatever their browser call returns; only page.ts's copy/QR ones hand anything back.
+        const { copy, qr } = ((await c?.run(ctx)) ?? {}) as RunResult;
+        return copy !== undefined || qr ? { copy, qr } : undefined;
+      }
       // Give the palette time to unmount so it isn't printed or captured.
       setTimeout(() => c.run(ctx).catch((e) => notify(ctx, `${c.title} failed: ${e.message ?? e}`)), 250);
       return;
     }
     case 'download': {
       const [d] = await browser.downloads.search({ id: item.downloadId });
-      return d?.state === 'complete' && d.exists ? browser.downloads.open(d.id) : browser.downloads.show(item.downloadId!);
+      return void (await (d?.state === 'complete' && d.exists ? browser.downloads.open(d.id) : browser.downloads.show(item.downloadId!)));
     }
     case 'closed':
-      return browser.sessions.restore(item.sessionId);
+      return void (await browser.sessions.restore(item.sessionId));
     default:
-      return newTab
+      await (newTab
         ? browser.tabs.create({ url: item.url, windowId: ctx.windowId, index: ctx.index + 1 })
-        : browser.tabs.update(ctx.id!, { url: item.url });
+        : browser.tabs.update(ctx.id!, { url: item.url }));
   }
 }
