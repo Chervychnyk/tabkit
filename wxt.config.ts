@@ -2,7 +2,7 @@ import { defineConfig } from 'wxt';
 
 // `npm run build:e2e`: browser tests can't click Chrome's permission prompt, so grant the data sources up front.
 const E2E = !!process.env.WXT_E2E;
-const DATA_SOURCE_PERMISSIONS = ['bookmarks', 'history', 'downloads', 'downloads.open', 'sessions'] as const;
+const DATA_SOURCE_PERMISSIONS = ['bookmarks', 'history', 'downloads', 'downloads.open', 'sessions', 'tabGroups'] as const;
 
 export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],

@@ -77,7 +77,7 @@ export const COMMANDS: Command[] = [
   { id: 'reload-tab', title: 'Reload current tab', run: (ctx) => browser.tabs.reload(ctx.id!) },
   { id: 'move-new-window', title: 'Move current tab to new window', run: (ctx) => browser.windows.create({ tabId: ctx.id }) },
   { id: 'bookmark-tab', title: 'Bookmark current tab', run: (ctx) => needs('bookmarks', 'Bookmarks').then(() => browser.bookmarks.create({ title: ctx.title, url: ctx.url })) },
-  { id: 'ungroup-tab', title: 'Remove current tab from group', run: (ctx) => browser.tabs.ungroup(ctx.id!) },
+  { id: 'ungroup-tab', title: 'Remove current tab from group', run: (ctx) => runTabAction('ungroup', ctx.id!).then(() => notify(ctx, 'Removed from group')) },
   { id: 'close-duplicates', title: 'Close duplicate tabs', run: closeDuplicates },
   { id: 'close-left', title: 'Close tabs to the left', run: (ctx) => closeWhere(ctx, (t) => t.index >= ctx.index) },
   { id: 'close-right', title: 'Close tabs to the right', run: (ctx) => closeWhere(ctx, (t) => t.index <= ctx.index) },
@@ -124,6 +124,10 @@ export async function runTabAction(action: TabAction, tabId: number) {
     case 'duplicate': return browser.tabs.duplicate(tabId);
     case 'incognito': return browser.windows.create({ url: t.url, incognito: true });
     case 'new-window': return browser.windows.create({ tabId });
+    case 'incognito': return browser.windows.create({ url: t.url, incognito: true });
     case 'close': return browser.tabs.remove(tabId);
+    case 'ungroup':
+      if (t.groupId === -1) throw new Error('Tab not in a group');
+      return browser.tabs.ungroup(tabId); // the browser deletes a group once its last tab leaves
   }
 }

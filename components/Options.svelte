@@ -119,7 +119,7 @@
       <h2>Data sources</h2>
       <p class="note">Turn on what the palette may search. Each one asks the browser for its permission; turning it off gives it back.</p>
       <div class="sources">
-        {#each DATA_SOURCES as d (d.filter)}
+        {#each DATA_SOURCES.filter((d) => d.filter !== 'groups' || !/\bEdg\//.test(navigator.userAgent)) as d (d.filter)}
           <label class="source">
             <input type="checkbox" checked={granted.has(d.permissions[0])} onchange={(e) => toggleSource(d.permissions, e.currentTarget.checked)} />
             <span><strong>{d.label}</strong><small>{d.note}</small></span>

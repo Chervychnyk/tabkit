@@ -2,7 +2,7 @@ import type { Tool } from './tools.ts';
 
 export type Kind = 'tab' | 'bookmark' | 'history' | 'download' | 'closed' | 'command' | 'search' | 'url' | 'prefix' | 'answer' | 'emoji' | 'todo' | 'feed' | 'weather';
 export type Filter = 'all' | 'tab' | 'bookmark' | 'history' | 'download' | 'closed' | 'pinned' | 'command' | 'search' | 'tools';
-export type TabAction = 'reload' | 'mute' | 'pin' | 'duplicate' | 'incognito' | 'new-window' | 'close';
+export type TabAction = 'reload' | 'mute' | 'pin' | 'duplicate' | 'incognito' | 'new-window' | 'close' | 'ungroup';
 
 export interface Item {
   id: string;
@@ -13,6 +13,8 @@ export interface Item {
   windowId?: number;
   pinned?: boolean;
   muted?: boolean;
+  /** set when the tab is in a group; name and colour need the optional tabGroups permission */
+  tabGroup?: { title?: string; color?: string };
   audible?: boolean;
   downloadId?: number;
   sessionId?: string;

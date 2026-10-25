@@ -22,8 +22,13 @@
   const CHIPS = $derived(ALL_CHIPS.filter(([f]) => f === 'all' || settings.chips.includes(f)));
   const TAB_ACTIONS: [TabAction | 'copy', string, string][] = [
     ['reload', '↻', 'Reload'], ['mute', '♪', 'Mute / unmute'], ['pin', '⊙', 'Pin / unpin'], ['duplicate', '⧉', 'Duplicate'],
-    ['incognito', '◐', 'Open in incognito'], ['new-window', '⇱', 'Move to new window'], ['copy', '⎘', 'Copy URL'], ['close', '✕', 'Close tab'],
+    ['incognito', '◐', 'Open in incognito'], ['new-window', '⇱', 'Move to new window'], ['ungroup', '⊖', 'Remove from group'], ['copy', '⎘', 'Copy URL'],
+    ['close', '✕', 'Close tab'],
   ];
+  // Chrome's tab group colours.
+  const GROUP_COLORS: Record<string, string> = {
+    grey: '#5f6368', blue: '#1a73e8', red: '#d93025', yellow: '#f9ab00', green: '#188038', pink: '#d01884', purple: '#a142f4', cyan: '#007b83', orange: '#fa903e',
+  };
   const DOWNLOAD_ACTIONS: ['show' | 'copy' | 'erase', string, string][] = [['show', '↗', 'Show in folder'], ['copy', '⎘', 'Copy source URL'], ['erase', '✕', 'Remove from list (keeps the file)']];
   const GLYPH: Partial<Record<Item['kind'], string>> = { command: '›', search: '⌕', prefix: ':', answer: '=' };
   const GROUPS: Partial<Record<Item['kind'], string>> = {
@@ -173,7 +178,9 @@
   async function tabAction(action: TabAction | 'copy', item: Item) {
     if (demo) return;
     if (action === 'copy') return copy(item.url ?? '', 'URL copied');
-    await send({ type: 'tab-action', action, tabId: item.tabId! });
+    const r: { error?: string } | undefined = await send({ type: 'tab-action', action, tabId: item.tabId! });
+    if (r?.error) return toast(r.error);
+    if (action === 'ungroup') toast('Removed from group');
     if (item.tabId === ctxTabId && (action === 'close' || action === 'new-window')) return close();
     await load();
     select(sel);
@@ -334,13 +341,14 @@
             {:else if item.url && item.kind !== 'search' && item.kind !== 'url'}<span class="url">{host(item.url)}</span>{/if}
           </span>
           {#if item.kind === 'tab'}
+            {#if item.tabGroup?.color}<span class="badge group" style:--c={GROUP_COLORS[item.tabGroup.color]}>{item.tabGroup.title || item.tabGroup.color}</span>{/if}
+            {#if item.pinned}<span class="badge">pinned</span>{/if}
+            {#if item.audible || item.muted}<span class="badge">{item.muted ? 'muted' : 'playing'}</span>{/if}
             <span class="actions">
-              {#each TAB_ACTIONS as [action, glyph, label]}
+              {#each TAB_ACTIONS.filter(([a]) => a !== 'ungroup' || item.tabGroup) as [action, glyph, label]}
                 <button title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); tabAction(action, item); }}>{glyph}</button>
               {/each}
             </span>
-            {#if item.pinned}<span class="badge">pinned</span>{/if}
-            {#if item.audible || item.muted}<span class="badge">{item.muted ? 'muted' : 'playing'}</span>{/if}
           {/if}
           {#if item.kind === 'download'}
             <span class="actions">
@@ -448,6 +456,7 @@
   .url { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; max-width: 40%; }
   .kind, .badge { font-size: 11px; color: var(--muted); flex: none; }
   .badge { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  .badge.group { border-color: var(--c); color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
   .actions { display: none; gap: 2px; flex: none; }
   li.sel .actions { display: flex; }
   .actions button {

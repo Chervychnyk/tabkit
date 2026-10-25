@@ -49,6 +49,8 @@ export const DATA_SOURCES = [
   { filter: 'history', label: 'History', permissions: ['history'], note: 'Search the last 90 days of history' },
   { filter: 'download', label: 'Downloads', permissions: ['downloads', 'downloads.open'], note: 'List and open downloads; save screenshots without a prompt' },
   { filter: 'closed', label: 'Recently closed', permissions: ['sessions'], note: 'Restore closed tabs and windows; "Undo close tab"' },
+  // Not a filter: grouped tabs get a badge with the group's name and colour. Edge doesn't offer the permission.
+  { filter: 'groups', label: 'Tab groups', permissions: ['tabGroups'], note: 'Show group names and colours on tabs (Chrome)' },
 ] as const;
 
 // --- Shortcut ---

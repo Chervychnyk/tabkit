@@ -26,7 +26,9 @@ Recently closed (`:r`): rows show how long ago; the default list shows the last 
 last one. Web search rows come last, one per engine enabled in Settings (Google, Bing, DuckDuckGo by default;
 Yahoo, Brave optional).
 
-Data sources: bookmarks, history, downloads and recently closed are optional permissions. Settings opens on
+Data sources: bookmarks, history, downloads, recently closed and tab groups are optional permissions. With tab
+groups on (Chrome; Edge doesn't offer it), grouped tabs show a badge in the group's colour; any grouped tab row
+has a "Remove from group" button, as does the `group` command. Settings opens on
 install so you can switch them on (Settings → Data sources); turning one off gives the permission back.
 
 Page tools (`:c` or just type): zoom, hard reload, print, scroll, view source, full screen, copy

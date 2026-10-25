@@ -86,16 +86,19 @@ async function load(): Promise<{ items: Item[]; missing: string[] }> {
   const granted = new Set<string>((await browser.permissions.getAll()).permissions);
   const missing = DATA_SOURCES.filter((d) => !granted.has(d.permissions[0])).map((d) => d.filter);
   const when = <T,>(perm: string, get: () => Promise<T>, empty: T) => (granted.has(perm) ? get() : Promise.resolve(empty));
-  const [tabs, tree, history, downloads, closed] = await Promise.all([
+  const [tabs, groups, tree, history, downloads, closed] = await Promise.all([
     browser.tabs.query({}),
+    when('tabGroups', () => browser.tabGroups.query({}), []),
     when('bookmarks', () => browser.bookmarks.getTree(), []),
     when('history', () => browser.history.search({ text: '', startTime: Date.now() - HISTORY_DAYS * 864e5, maxResults: HISTORY_MAX }), []),
     when('downloads', () => browser.downloads.search({ limit: 100, orderBy: ['-startTime'] }), []),
     when('sessions', () => browser.sessions.getRecentlyClosed({ maxResults: 25 }), []),
   ]);
+  const groupOf = new Map(groups.map((g) => [g.id, g]));
   const items: Item[] = tabs.map((t) => ({
     id: `tab:${t.id}`, kind: 'tab', title: t.title || t.url || '', url: t.url,
     tabId: t.id, windowId: t.windowId, pinned: t.pinned, muted: t.mutedInfo?.muted, audible: t.audible,
+    tabGroup: t.groupId > 0 ? { title: groupOf.get(t.groupId)?.title, color: groupOf.get(t.groupId)?.color } : undefined,
   }));
   for (const c of COMMANDS) items.push({ id: `cmd:${c.id}`, kind: 'command', title: c.title, command: c.id });
 
