@@ -38,9 +38,11 @@ test('Esc closes; chat takes every other key; an open QR code leaves keys alone'
   assert.equal(step(s0, key('ArrowDown'), view({ qr: true })), null);
 });
 
-test('Enter runs the row (Shift: current tab); on a prefix row it rewrites the query', () => {
+test('Enter runs the row (Shift: current tab, Mod on a tab: split view); on a prefix row it rewrites the query', () => {
   assert.deepEqual(step(s0, key('Enter'), view())?.effect, { do: 'run', item: tab, newTab: true });
   assert.deepEqual(step(s0, key('Enter', { shift: true }), view())?.effect, { do: 'run', item: tab, newTab: false });
+  assert.deepEqual(step(s0, key('Enter', { mod: true }), view())?.effect, { do: 'tab-split', item: tab });
+  assert.deepEqual(step({ ...s0, sel: 1 }, key('Enter', { mod: true }), view())?.effect, { do: 'run', item: hist, newTab: true });
   assert.deepEqual(step({ ...s0, query: '?', sel: 2 }, key('Enter'), view()), { state: { query: ':h ', chip: 'all', sel: 0 } });
   assert.deepEqual(step(s0, key('Enter'), view({ results: [] })), { state: s0 });
 });

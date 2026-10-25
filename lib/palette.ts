@@ -26,7 +26,7 @@ export type Effect =
   | { do: 'close' }
   | { do: 'chat' } // the chat panel takes the key
   | { do: 'run'; item: Item; newTab: boolean }
-  | { do: 'tab-close' | 'tool-delete'; item: Item };
+  | { do: 'tab-close' | 'tab-split' | 'tool-delete'; item: Item };
 
 export const EMOJI_COLS = 10;
 
@@ -56,6 +56,7 @@ export function step(s: PaletteState, e: PaletteEvent, v: View): { state: Palett
     return at(gridStep(v.sections, v.results.length, EMOJI_COLS, s.sel, key === 'ArrowDown' ? 1 : -1));
   if (key === 'ArrowDown') return at(s.sel + 1);
   if (key === 'ArrowUp') return at(s.sel - 1);
+  if (key === 'Enter' && mod && cur?.kind === 'tab') return { state: s, effect: { do: 'tab-split', item: cur } };
   if (key === 'Enter') return cur ? step(s, { type: 'activate', item: cur, newTab: !shift }, v) : { state: s };
   if (key === 'Backspace' && mod && cur?.kind === 'tab') return { state: s, effect: { do: 'tab-close', item: cur } };
   if (key === 'Backspace' && mod && cur && toolOf(cur.kind)) return { state: s, effect: { do: 'tool-delete', item: cur } };

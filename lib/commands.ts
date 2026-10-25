@@ -115,7 +115,7 @@ async function toggleSite(ctx: Tab) {
   await notify(ctx, off ? `Shortcut enabled on ${host}` : `Shortcut disabled on ${host}; the toolbar icon still works`);
 }
 
-export async function runTabAction(action: TabAction, tabId: number) {
+export async function runTabAction(action: TabAction, tabId: number, ctxTabId?: number) {
   const t = await browser.tabs.get(tabId);
   switch (action) {
     case 'reload': return browser.tabs.reload(tabId);
@@ -127,5 +127,29 @@ export async function runTabAction(action: TabAction, tabId: number) {
     case 'ungroup':
       if (t.groupId === -1) throw new Error('Tab not in a group');
       return browser.tabs.ungroup(tabId); // the browser deletes a group once its last tab leaves
+    case 'split': return splitWith(tabId, ctxTabId);
   }
+}
+
+// Split View API (Chrome 155+), not in the bundled browser types yet.
+const splitApi = () => browser.tabs as unknown as { createSplit?(tabIds: number[]): Promise<unknown>; unsplit(splitViewId: number): Promise<unknown> };
+const splitOf = (t: Tab) => (t as Tab & { splitViewId?: number }).splitViewId ?? -1;
+
+/** Puts the tab beside the current one and pairs them in a split view; either leaves any split it was in. */
+async function splitWith(tabId: number, ctxTabId?: number) {
+  const api = splitApi();
+  if (!api.createSplit) throw new Error('Split view needs Chrome 155 or later');
+  if (ctxTabId === undefined || ctxTabId === tabId) throw new Error('Pick a tab other than the current one');
+  const [ctx, t] = await Promise.all([browser.tabs.get(ctxTabId), browser.tabs.get(tabId)]);
+  for (const s of new Set([splitOf(ctx), splitOf(t)])) if (s !== -1) await api.unsplit(s);
+  // Split partners must share a window, pinned state and group, and sit side by side.
+  if (t.windowId !== ctx.windowId) await browser.tabs.move(tabId, { windowId: ctx.windowId, index: -1 });
+  if (t.pinned !== ctx.pinned) await browser.tabs.update(tabId, { pinned: ctx.pinned });
+  const { groupId } = await browser.tabs.get(tabId); // pinning drops a tab from its group
+  if (ctx.groupId !== -1 && groupId !== ctx.groupId) await browser.tabs.group({ tabIds: tabId, groupId: ctx.groupId });
+  else if (ctx.groupId === -1 && groupId !== -1) await browser.tabs.ungroup(tabId);
+  const [c, m] = await Promise.all([browser.tabs.get(ctxTabId), browser.tabs.get(tabId)]); // the steps above shift indexes
+  // move's index is where the tab ends up, so a tab left of the current one lands at its index
+  await browser.tabs.move(tabId, { index: m.index < c.index ? c.index : c.index + 1 });
+  await api.createSplit([ctxTabId, tabId]);
 }

@@ -28,7 +28,8 @@ Yahoo, Brave optional).
 
 Data sources: bookmarks, history, downloads, recently closed and tab groups are optional permissions. With tab
 groups on (Chrome; Edge doesn't offer it), grouped tabs show a badge in the group's colour; any grouped tab row
-has a "Remove from group" button, as does the `group` command. Settings opens on
+has a "Remove from group" button, as does the `group` command. ⌘↵ / Ctrl+Enter on a tab row (or its split button)
+opens it in Chrome's split view beside the current tab (Chrome 155+). Settings opens on
 install so you can switch them on (Settings → Data sources); turning one off gives the permission back.
 
 Page tools (`:c` or just type): zoom, hard reload, print, scroll, view source, full screen, copy

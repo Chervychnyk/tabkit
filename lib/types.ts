@@ -2,7 +2,7 @@ import type { Tool } from './tools.ts';
 
 export type Kind = 'tab' | 'bookmark' | 'history' | 'download' | 'closed' | 'command' | 'search' | 'url' | 'prefix' | 'answer' | 'emoji' | 'todo' | 'feed' | 'weather';
 export type Filter = 'all' | 'tab' | 'bookmark' | 'history' | 'download' | 'closed' | 'pinned' | 'command' | 'search' | 'tools';
-export type TabAction = 'reload' | 'mute' | 'pin' | 'duplicate' | 'new-window' | 'close' | 'ungroup';
+export type TabAction = 'reload' | 'mute' | 'pin' | 'duplicate' | 'new-window' | 'close' | 'ungroup' | 'split';
 
 export interface Item {
   id: string;
@@ -43,7 +43,8 @@ export type Message =
   | { type: 'toggle' }
   | { type: 'load'; tabId?: number }
   | { type: 'run'; item: Item; tabId: number; newTab: boolean }
-  | { type: 'tab-action'; action: TabAction; tabId: number }
+  /** ctxTabId: the tab the palette was opened on (split pairs tabId with it) */
+  | { type: 'tab-action'; action: TabAction; tabId: number; ctxTabId?: number }
   | { type: 'download-action'; action: 'show' | 'erase'; downloadId: number }
   | { type: 'tool'; tool: Tool; text: string }
   | { type: 'tool-run'; item: Item; alt: boolean }

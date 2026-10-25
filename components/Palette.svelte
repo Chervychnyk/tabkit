@@ -32,6 +32,7 @@
     pin: PIN,
     pinned: PIN.replace('<path ', '<path fill="currentColor" '),
     duplicate: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/><path d="M14.5 11.5v6"/><path d="M11.5 14.5h6"/>',
+    split: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
     window: '<path d="M14 3h7v7"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>',
     ungroup: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
     folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
@@ -44,6 +45,7 @@
     t.muted ? ['mute', 'muted', 'Unmute tab'] : ['mute', 'speaker', 'Mute tab'],
     t.pinned ? ['pin', 'pinned', 'Unpin tab'] : ['pin', 'pin', 'Pin tab'],
     ['duplicate', 'duplicate', 'Duplicate tab'],
+    ...(t.tabId !== ctxTabId ? [['split', 'split', 'Split view with this tab'] as [TabAction, string, string]] : []),
     ['new-window', 'window', 'Move to new window'],
     ...(t.tabGroup ? [['ungroup', 'ungroup', 'Remove from group'] as [TabAction, string, string]] : []),
     ['close', 'close', 'Close tab'],
@@ -51,6 +53,7 @@
   const TAB_TOASTS: Record<TabAction, (t: Item) => string> = {
     reload: () => 'Tab reloaded', mute: (t) => (t.muted ? 'Tab unmuted' : 'Tab muted'), pin: (t) => (t.pinned ? 'Tab unpinned' : 'Tab pinned'),
     duplicate: () => 'Tab duplicated', 'new-window': () => 'Moved to new window', ungroup: () => 'Removed from group', close: () => 'Tab closed',
+    split: () => 'Split view with this tab',
   };
   // Chrome's tab group colours.
   const GROUP_COLORS: Record<string, string> = {
@@ -191,9 +194,9 @@
 
   async function tabAction(action: TabAction, item: Item) {
     if (demo) return;
-    if ((await call({ type: 'tab-action', action, tabId: item.tabId! })) === null) return;
+    if ((await call({ type: 'tab-action', action, tabId: item.tabId!, ctxTabId })) === null) return;
     toast(TAB_TOASTS[action](item));
-    if (item.tabId === ctxTabId && (action === 'close' || action === 'new-window')) return close();
+    if (action === 'split' || (item.tabId === ctxTabId && (action === 'close' || action === 'new-window'))) return close();
     await load();
     select(sel);
   }
@@ -225,6 +228,7 @@
     if (fx?.do === 'close') close();
     else if (fx?.do === 'run') activate(fx.item, fx.newTab);
     else if (fx?.do === 'tab-close') tabAction('close', fx.item);
+    else if (fx?.do === 'tab-split') tabAction('split', fx.item);
     else if (fx?.do === 'tool-delete') call({ type: 'tool-delete', item: fx.item }).then(() => toolRev++);
     return r;
   }
@@ -370,7 +374,7 @@
       {/each}
     </ul>
     {/if}
-    <footer>{#if chatMode}↵ send · ↵ on empty copies the last answer · Tab switch model · {isMac ? '⌘' : 'Ctrl'}⌫ clear chat · @page adds this page{:else if tool}{TOOLS[tool.tool].hint.replaceAll('{mod}', isMac ? '⌘' : 'Ctrl')}{:else if downloadsView}↑↓ navigate · ↵ open file · Tab filter · Esc close · <button class="link" onclick={browseDownloads}>Browse downloads</button>{:else}↑↓ navigate · ↵ open · ⇧↵ in current tab · {isMac ? '⌘' : 'Ctrl'}⌫ close tab · Tab filter · Esc close{/if}</footer>
+    <footer>{#if chatMode}↵ send · ↵ on empty copies the last answer · Tab switch model · {isMac ? '⌘' : 'Ctrl'}⌫ clear chat · @page adds this page{:else if tool}{TOOLS[tool.tool].hint.replaceAll('{mod}', isMac ? '⌘' : 'Ctrl')}{:else if downloadsView}↑↓ navigate · ↵ open file · Tab filter · Esc close · <button class="link" onclick={browseDownloads}>Browse downloads</button>{:else}↑↓ navigate · ↵ open · ⇧↵ in current tab · {isMac ? '⌘' : 'Ctrl'}↵ split view · {isMac ? '⌘' : 'Ctrl'}⌫ close tab · Tab filter · Esc close{/if}</footer>
   </div>
 </div>
 

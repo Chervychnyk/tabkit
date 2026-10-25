@@ -64,7 +64,7 @@ const HANDLERS = {
     return { ...(await load(tabId)), tabId };
   },
   run: async (msg) => run(msg.item, await browser.tabs.get(msg.tabId), msg.newTab),
-  'tab-action': async (msg) => void (await runTabAction(msg.action, msg.tabId)),
+  'tab-action': async (msg) => void (await runTabAction(msg.action, msg.tabId, msg.ctxTabId)),
   // erase only drops the list entry; the file stays on disk
   'download-action': async (msg) =>
     void (await (msg.action === 'show' ? browser.downloads.show(msg.downloadId) : browser.downloads.erase({ id: msg.downloadId }))),
