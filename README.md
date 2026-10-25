@@ -119,6 +119,16 @@ Open with the command "Tabkit settings" or the extension's options page.
 
 Everything except keys syncs through `chrome.storage.sync`.
 
+### Commands from other extensions
+
+Another extension can add its own commands to the palette (Markboard does). It sends
+`{ type: 'tabkit:register', name }` to Tabkit's id; on each palette load Tabkit asks it with
+`{ type: 'tabkit:commands' }` (reply: `{ id, title }[]`) and runs a picked one with
+`{ type: 'tabkit:run', command, tabId }`. `{ type: 'tabkit:open' }` opens the palette over the sender's own page.
+Titles are shown as `<name>: <title>`, so don't prefix them yourself. A provider has 300 ms to answer or is
+skipped for that load; one whose messages fail (uninstalled, disabled, mid-update) is forgotten, so register again
+on startup or whenever your UI opens. See `lib/providers.ts`.
+
 ## Development
 
 WXT + Svelte 5.
@@ -146,6 +156,7 @@ npm run icons      # assets/icon.svg -> public/icon/{16,32,48,128}.png (needs rs
   in the background: one module per tool in `lib/toolbox/`, picked by the row's kind.
 - `lib/settings.ts` holds settings, themes and the provider catalog; `lib/ai.ts` streams chats over a
   runtime port.
+- `lib/providers.ts` lists and runs other extensions' commands (pure parts tested).
 - `components/Chat.svelte` and `components/Options.svelte` are the chat view and settings page.
 - `hotkey.content.ts` is the only script that runs on every page; the palette is injected only when you
   open it.

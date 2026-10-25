@@ -2,6 +2,7 @@ import type { Browser } from 'wxt/browser';
 import { COMMANDS, runTabAction, splitOf } from '@/lib/commands';
 import { allowLocalModels, listModels, onChatPort, targets } from '@/lib/ai';
 import { notify } from '@/lib/page';
+import { parseProvided, providerItems, registerProvider, runProvided } from '@/lib/providers';
 import { ago, dedupeHistory, fileSize } from '@/lib/query';
 import { DATA_SOURCES } from '@/lib/settings';
 import { toolDelete, toolItems, toolRun } from '@/lib/toolbox';
@@ -35,6 +36,14 @@ export default defineBackground(() => {
     (HANDLERS[msg.type] as (m: Message, s: Browser.runtime.MessageSender) => Promise<unknown>)(msg, sender)
       .then(reply, (e) => reply({ error: e?.message ?? String(e) }));
     return true;
+  });
+
+  // Command providers (lib/providers.ts): other extensions register, and may open the palette over their own pages.
+  browser.runtime.onMessageExternal.addListener((msg: unknown, sender) => {
+    if (!sender.id || typeof msg !== 'object' || msg === null || !('type' in msg)) return;
+    if (msg.type === 'tabkit:register') registerProvider(sender.id, 'name' in msg ? msg.name : undefined);
+    // Only over the provider's own pages: a content script of another extension could otherwise open it over any site.
+    else if (msg.type === 'tabkit:open' && sender.tab && sender.url?.startsWith(`chrome-extension://${sender.id}/`)) toggle(sender.tab);
   });
 });
 
@@ -83,13 +92,14 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   const granted = new Set<string>((await browser.permissions.getAll()).permissions);
   const missing = DATA_SOURCES.filter((d) => !granted.has(d.permissions[0])).map((d) => d.filter);
   const when = <T,>(perm: string, get: () => Promise<T>, empty: T) => (granted.has(perm) ? get() : Promise.resolve(empty));
-  const [tabs, groups, tree, history, downloads, closed] = await Promise.all([
+  const [tabs, groups, tree, history, downloads, closed, provided] = await Promise.all([
     browser.tabs.query({}),
     when('tabGroups', () => browser.tabGroups.query({}), []),
     when('bookmarks', () => browser.bookmarks.getTree(), []),
     when('history', () => browser.history.search({ text: '', startTime: Date.now() - HISTORY_DAYS * 864e5, maxResults: HISTORY_MAX }), []),
     when('downloads', () => browser.downloads.search({ limit: 100, orderBy: ['-startTime'] }), []),
     when('sessions', () => browser.sessions.getRecentlyClosed({ maxResults: 25 }), []),
+    providerItems(),
   ]);
   const groupOf = new Map(groups.map((g) => [g.id, g]));
   // The tab the palette opened on first, then the most recently used.
@@ -102,8 +112,8 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   }));
   // Most-run commands first; a stable sort keeps the list's own order among equals (and for never-run ones).
   const uses = await commandUses();
-  for (const c of [...COMMANDS].sort((a, b) => (uses[b.id] ?? 0) - (uses[a.id] ?? 0)))
-    items.push({ id: `cmd:${c.id}`, kind: 'command', title: c.title, command: c.id });
+  const commands = [...COMMANDS.map((c): Item => ({ id: `cmd:${c.id}`, kind: 'command', title: c.title, command: c.id })), ...provided];
+  items.push(...commands.sort((a, b) => (uses[b.command!] ?? 0) - (uses[a.command!] ?? 0)));
 
   const walk = (nodes: Browser.bookmarks.BookmarkTreeNode[]) => {
     for (const n of nodes) {
@@ -142,6 +152,11 @@ async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean): Promise<
       await browser.tabs.update(item.tabId!, { active: true });
       return void (await browser.windows.update(item.windowId!, { focused: true }));
     case 'command': {
+      const ext = parseProvided(item.command!);
+      if (ext) {
+        await countUse(item.command!);
+        return runProvided(ext.extId, ext.id, ctx.id);
+      }
       const c = COMMANDS.find((c) => c.id === item.command);
       if (c) await countUse(c.id);
       if (!c?.deferred) {
