@@ -1,5 +1,5 @@
-import data from 'emojibase-data/en/compact.json';
-import github from 'emojibase-data/en/shortcodes/github.json';
+import data from 'emojibase-data/en/compact.json' with { type: 'json' };
+import github from 'emojibase-data/en/shortcodes/github.json' with { type: 'json' };
 import { searchEmoji, withTone } from '../tools.ts';
 import type { Item } from '../types.ts';
 import { get, LIMIT, set, type Result, type ToolModule } from './shared.ts';

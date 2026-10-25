@@ -1,21 +1,20 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { toolDelete, toolItems, toolRun } from './toolbox.ts';
 import { rss } from './toolbox/rss.ts';
 import { todo } from './toolbox/todo.ts';
 import { weather } from './toolbox/weather.ts';
 import { toolOf } from './tools.ts';
 import type { Item } from './types.ts';
 
-// toolbox.ts itself isn't imported: the emoji module's JSON import doesn't load under node.
-
 const area = () => {
   const data: Record<string, unknown> = {};
   return { data, get: async (k: string) => ({ [k]: data[k] }), set: async (o: Record<string, unknown>) => void Object.assign(data, o) };
 };
-let sync: ReturnType<typeof area>;
+let sync: ReturnType<typeof area>, local: ReturnType<typeof area>;
 beforeEach(() => {
-  sync = area();
-  (globalThis as { browser?: unknown }).browser = { storage: { sync, local: area() } };
+  [sync, local] = [area(), area()];
+  (globalThis as { browser?: unknown }).browser = { storage: { sync, local } };
 });
 
 const titles = (rows: Item[]) => rows.map((r) => `${r.icon} ${r.title}`);
@@ -24,6 +23,25 @@ test('rows map back to the tool that listed them', () => {
   assert.equal(toolOf('feed'), 'rss');
   assert.equal(toolOf('weather'), 'weather');
   assert.equal(toolOf('tab'), undefined);
+});
+
+test('rows reach the tool that listed them by kind; other rows are left alone', async () => {
+  await toolRun((await toolItems('todo', 'milk'))[0]!, false);
+  assert.deepEqual(titles(await toolItems('todo', '')), ['☐ milk']);
+  await toolDelete((await toolItems('todo', ''))[0]!);
+  assert.deepEqual(await toolItems('todo', ''), []);
+  assert.equal(await toolRun({ id: 'tab:1', kind: 'tab', title: '' }, false), undefined);
+});
+
+test('emoji: search, copy (Shift: :code:), recents and skin tone', async () => {
+  const [wave] = await toolItems('emoji', 'waving hand');
+  assert.equal(wave?.title, 'waving hand');
+  assert.deepEqual(await toolRun(wave!, false), { copy: '👋' });
+  assert.deepEqual(await toolRun(wave!, true), { copy: ':wave:' });
+  const all = await toolItems('emoji', '');
+  assert.deepEqual([all[0]?.group, all[0]?.title], ['Recently used', 'waving hand']);
+  local.data.emojiTone = 3;
+  assert.equal((await toolItems('emoji', 'waving hand'))[0]?.copy, '👋🏽');
 });
 
 test('todo: add, check off, clear completed, delete', async () => {
