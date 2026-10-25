@@ -3,7 +3,7 @@
     "agent-browser": {
       "type": "stdio",
       "command": "agent-browser",
-      "args": ["mcp", "--tools", "core,debug"],
+      "args": ["mcp", "--tools", "core,debug,mobile"],
       "env": {}
     }
   }

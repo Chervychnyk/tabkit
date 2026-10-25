@@ -8,9 +8,11 @@ The Bash sandbox can't launch Chrome, so all browser work goes through the agent
 ## Steps
 
 1. **Build for tests**: `npm run build:e2e`. It grants the optional data sources (bookmarks, history, downloads, sessions) up front and skips opening Settings on install, which would steal keyboard focus from the page. Run `npm run build` again before handing the build to the user.
-2. **Relaunch, one call per message** (close and open in the same message race, and the open comes up without the extension): `agent_browser_close`, then `agent_browser_open` with `session: "tabcmdr"`, `headed: true`, `extraArgs: ["--extension", "/Users/artem/code/tabcmdr/.output/chrome-mv3", "--profile", "/Users/artem/.agent-browser/profiles/tabcmdr"]`, `url: "https://example.com"`. A relaunch is the only way to load a new build. The `--profile` folder keeps storage (settings, Ollama, chats) across relaunches; delete it for a first-install state.
+2. **Load the build.** Content-script and options-page changes load on a page reload (`location.reload()`). A background change needs a relaunch, one call per message (close and open in the same message race, and the open comes up without the extension): `agent_browser_close`, then `agent_browser_open` with `session: "tabcmdr"`, `headed: true`, `extraArgs: ["--extension", "/Users/artem/code/tabcmdr/.output/chrome-mv3", "--profile", "/Users/artem/.agent-browser/profiles/tabcmdr"]`, `url: "https://example.com"`. The `--profile` folder keeps storage (settings, Ollama, chats) across relaunches; delete it for a first-install state.
+   - **Relaunched** means the open result says `launched: true`. `reused: true` means the daemon reattached to the old browser, which still runs the old background: open a new `session` name with a new `--profile` folder instead.
+   - **Prove the build is live** before testing: on `chrome-extension://ioheljfjjicdkllggdcjnlmeeaehcllk/window.html`, `chrome.runtime.sendMessage(...)` (or `fetch('/background.js')`) returns something only the new code produces.
 3. **Seed settings** only when the profile lacks them (see Seeding).
-4. **Open the palette**: `agent_browser_press` `Meta+k` on the page, then install the helpers (see Helpers).
+4. **Open the palette**: `agent_browser_press` `Meta+k` on the page, then install the helpers (see Helpers). A fresh launch leaves the page `document.visibilityState === 'hidden'` and the keypress lost: `agent_browser_tab_switch` to the tab, then press again.
 5. **Drive and assert** with `agent_browser_eval`, returning short strings. Anything slower than a couple of seconds (AI streaming, feeds, weather) runs as a background job: the script writes `window.__t`, then `agent_browser_wait_ms`, then read `window.__t`.
 6. **Screenshot** after any UI change: All view, one tool view (`:em`), and chat (`:ai`). Done when each screenshot shows the change and nothing else moved.
 
@@ -38,11 +40,15 @@ Synthetic `__key('Enter')` runs actions but carries no user activation, so clipb
 
 ## Debugging
 
-The repo's `.mcp.json` loads agent-browser with `--tools core,debug`: the debug set adds console and page-error reading, clipboard, and DevTools. Reach for the console tool first when something silently doesn't happen (palette doesn't open, a row does nothing): content-script and page errors land there. Background-worker errors don't; reproduce the call from an extension page instead (`chrome.runtime.sendMessage({ type: 'load' })` on `window.html`).
+The repo's `.mcp.json` loads agent-browser with `--tools core,debug,mobile`: the debug set adds console and page-error reading, clipboard, and DevTools; mobile adds viewport and mouse tools. A user-level `agent-browser` server of the same name wins over it, so confirm with `agent_browser_tools_profiles` that the active set lists all three. Reach for the console tool first when something silently doesn't happen (palette doesn't open, a row does nothing): content-script and page errors land there. Background-worker errors don't; reproduce the call from an extension page instead (`chrome.runtime.sendMessage({ type: 'load' })` on `window.html`).
+
+## Settings page
+
+`options.html` has one view per area, picked by hash: `#general`, `#appearance`, `#sources`, `#ai`. Check layout at 1440 and 390 wide with the `mobile` tool set's viewport emulation, and hover states with its mouse tools; `agent_browser_tools_profiles` lists what is active. Without them: render `options.html#<view>` in an iframe of the target width scaled to fit the window, and force hover by copying every `:hover` rule onto a class (`cssText.replaceAll(':hover', '.__h')`) so the rules compete as under a real pointer.
 
 ## Seeding
 
-Open `chrome-extension://ioheljfjjicdkllggdcjnlmeeaehcllk/options.html` and change settings through the form (set `.value`, dispatch `input`), never with `chrome.storage.*.set`: the open page autosaves its own state about 300 ms later and overwrites direct writes. Example, enabling Ollama:
+Open `chrome-extension://ioheljfjjicdkllggdcjnlmeeaehcllk/options.html#ai` (or the view holding the setting) and change settings through the form (set `.value`, dispatch `input`), never with `chrome.storage.*.set`: the open page autosaves its own state about 300 ms later and overwrites direct writes. Example, enabling Ollama:
 
 ```js
 (async () => {
@@ -59,6 +65,8 @@ Chat history and other per-device state can be written straight to `chrome.stora
 ## Gotchas
 
 - Use agent-browser only through the MCP tools; the `agent-browser` CLI shares the daemon and its `close` kills the MCP session.
+- After the daemon's idle timeout (1 h) the next call starts a fresh browser (`launched: true` on a plain eval) on `about:blank`: page state and installed helpers are gone, so reopen the page.
+- The real mouse cursor in the headed window moves the palette selection (`onmousemove`), so a synthetic Enter can run whatever row sits under it. Set `sel` by query text and assert the selected row before pressing Enter.
 - `chrome.runtime.reload()` disables the command-line-loaded extension (pages then fail with ERR_BLOCKED_BY_CLIENT). Relaunch instead.
 - An eval that awaits for long fails with "Promise was collected"; use the background-job pattern from step 5.
 - A normal `npm run build` opens Settings on first launch; if `press` stops reaching the page (`document.visibilityState === 'hidden'`), close that tab from an extension page: `chrome.tabs.query({ url: chrome.runtime.getURL('options.html') })` then `chrome.tabs.remove`.
