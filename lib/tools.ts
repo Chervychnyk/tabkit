@@ -1,16 +1,12 @@
 // Pure parts of the tools (prefixes, emoji search, feed parsing, weather codes). Storage and network live in toolbox.ts.
 import fuzzysort from 'fuzzysort';
+import { interpret } from './prefixes.ts';
 
 export type Tool = 'emoji' | 'todo' | 'rss' | 'weather';
 
-export const TOOL_PREFIXES: Record<string, Tool> = { em: 'emoji', emoji: 'emoji', todo: 'todo', td: 'todo', rss: 'rss', wx: 'weather' };
-// Prefix hints shown for ':'; ai is handled by the palette's chat mode rather than parseTool.
-export const TOOL_LABELS: Record<string, string> = { ai: 'AI chat', em: 'Emoji', td: 'To-do list', rss: 'RSS reader', wx: 'Weather' };
-
 export function parseTool(q: string): { tool: Tool; text: string } | null {
-  const m = /^:(\w+)(?:\s+([\s\S]*))?$/.exec(q);
-  const tool = m && TOOL_PREFIXES[m[1]!];
-  return tool ? { tool, text: (m[2] ?? '').trim() } : null;
+  const p = interpret(q);
+  return p?.prefix.mode === 'tool' ? { tool: p.prefix.tool, text: p.text } : null;
 }
 
 export interface Emoji { label: string; unicode: string; hexcode: string; skins?: { hexcode: string; unicode: string }[] }

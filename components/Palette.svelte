@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import Chat from '@/components/Chat.svelte';
+  import { interpret } from '@/lib/prefixes';
   import { parseQuery, search, segments } from '@/lib/query';
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
   import { gridStep, parseTool, type Tool } from '@/lib/tools';
@@ -89,7 +90,7 @@
   let closing = $state(false);
 
   const tool = $derived(parseTool(query));
-  const chatMode = $derived(/^:ai(\s|$)/.test(query));
+  const chatMode = $derived(interpret(query)?.prefix.mode === 'chat');
   let chat = $state<Chat>();
   const results = $derived(tool ? toolResults : search(items, query, chip, settings.engines));
   // A filter prefix (:h, :b…) lights its chip; picking a chip drops the prefix so the chip wins.

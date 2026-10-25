@@ -1,18 +1,7 @@
 import fuzzysort from 'fuzzysort';
-import { ANSWER_PREFIXES, answer } from './answers.ts';
-import { TOOL_LABELS } from './tools.ts';
+import { answer } from './answers.ts';
+import { hints, interpret } from './prefixes.ts';
 import type { Filter, Item, Kind } from './types.ts';
-
-export const PREFIXES: Record<string, { filter: Filter; label: string }> = {
-  t: { filter: 'tab', label: 'Open tabs & commands' },
-  b: { filter: 'bookmark', label: 'Bookmarks' },
-  h: { filter: 'history', label: 'History' },
-  d: { filter: 'download', label: 'Downloads' },
-  r: { filter: 'closed', label: 'Recently closed' },
-  p: { filter: 'pinned', label: 'Pinned tabs' },
-  c: { filter: 'command', label: 'Commands' },
-  s: { filter: 'search', label: 'Web search' },
-};
 
 export const ENGINES: Record<string, string> = {
   Google: 'https://www.google.com/search?q=',
@@ -20,13 +9,6 @@ export const ENGINES: Record<string, string> = {
   DuckDuckGo: 'https://duckduckgo.com/?q=',
   Yahoo: 'https://search.yahoo.com/search?p=',
   Brave: 'https://search.brave.com/search?q=',
-};
-
-/** Prefixes that narrow the palette to a few page commands. */
-export const COMMAND_PREFIXES: Record<string, { label: string; match: (id: string) => boolean }> = {
-  ss: { label: 'Screenshot', match: (id) => id.startsWith('shot-') },
-  cp: { label: 'Color picker', match: (id) => id === 'color-picker' },
-  rl: { label: 'Ruler', match: (id) => id === 'ruler' },
 };
 
 /** The Tools tab: each row opens a tool by inserting its prefix (or runs a page command). */
@@ -50,10 +32,8 @@ const LIMIT = 50;
 const BOOST: Partial<Record<Kind, number>> = { tab: 0.15, command: 0.1, bookmark: 0.05 };
 
 export function parseQuery(q: string): { filter: Filter | null; text: string } {
-  const m = /^:(\w+)(?:\s+([\s\S]*))?$/.exec(q);
-  const p = m?.[1] ? PREFIXES[m[1]] : undefined;
-  if (p) return { filter: p.filter, text: (m![2] ?? '').trim() };
-  return { filter: null, text: q.trim() };
+  const p = interpret(q);
+  return p?.prefix.mode === 'filter' ? { filter: p.prefix.filter, text: p.text } : { filter: null, text: q.trim() };
 }
 
 function matches(item: Item, f: Filter): boolean {
@@ -111,25 +91,16 @@ export function groupByKind(list: Item[]): Item[] {
 }
 
 export function search(items: Item[], query: string, chip: Filter = 'all', engines = Object.keys(ENGINES)): Item[] {
-  if (/^:(tx|uuid|pwd)(\s|$)/.test(query)) return answer(query);
-  const cmd = /^:(\w+)(?:\s+([\s\S]*))?$/.exec(query);
-  const cp = cmd && COMMAND_PREFIXES[cmd[1]!];
-  if (cp) {
-    const pool = items.filter((i) => i.kind === 'command' && cp.match(i.command!));
-    return cmd[2]?.trim() ? rank(cmd[2].trim(), pool) : pool;
+  const hit = interpret(query);
+  const p = hit?.prefix;
+  if (p?.mode === 'answer') return answer(query);
+  if (p?.mode === 'command') {
+    const pool = items.filter((i) => i.kind === 'command' && p.match(i.command!));
+    return hit!.text ? rank(hit!.text, pool) : pool;
   }
   const { filter, text } = parseQuery(query);
-  if (!filter && /^:\w*$/.test(query)) {
-    const labels = {
-      ...Object.fromEntries(Object.entries(PREFIXES).map(([k, p]) => [k, p.label])),
-      ...TOOL_LABELS,
-      ...Object.fromEntries(Object.entries(COMMAND_PREFIXES).map(([k, p]) => [k, p.label])),
-      ...ANSWER_PREFIXES,
-    };
-    return Object.entries(labels)
-      .filter(([k]) => `:${k}`.startsWith(query))
-      .map(([k, label]) => ({ id: `prefix:${k}`, kind: 'prefix', title: `:${k}  ${label}`, command: `:${k} ` }));
-  }
+  if (!filter && /^:\w*$/.test(query))
+    return hints(query).map(({ key, label }) => ({ id: `prefix:${key}`, kind: 'prefix', title: `:${key}  ${label}`, command: `:${key} ` }));
   const f = filter ?? chip;
   if (f === 'tools') return text ? rank(text, TOOL_ITEMS, {}) : TOOL_ITEMS;
   const out: Item[] = !filter && chip === 'all' ? answer(text) : [];

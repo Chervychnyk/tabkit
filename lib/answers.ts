@@ -1,8 +1,7 @@
+import { interpret } from './prefixes.ts';
 import type { Item } from './types.ts';
 
 // Instant answers: pure functions of the query, computed in the palette on each keystroke.
-
-export const ANSWER_PREFIXES: Record<string, string> = { tx: 'Text case', uuid: 'UUID v4', pwd: 'Password (e.g. :pwd 24)' };
 
 const ans = (title: string, copy = title, color?: string): Item => ({ id: '', kind: 'answer', title, copy, color });
 const fmt = (n: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 10 }).format(n);
@@ -13,8 +12,11 @@ export function answer(query: string, now = new Date()): Item[] {
 }
 
 function compute(q: string, now: Date): Item[] {
-  const m = /^:(tx|uuid|pwd)(?:\s+([\s\S]*))?$/.exec(q);
-  if (m) return m[1] === 'tx' ? textCase(m[2] ?? '') : m[1] === 'uuid' ? [ans(crypto.randomUUID())] : passwords(m[2]);
+  const p = interpret(q);
+  if (p?.prefix.mode === 'answer') {
+    const { key } = p.prefix;
+    return key === 'tx' ? textCase(p.text) : key === 'uuid' ? [ans(crypto.randomUUID())] : passwords(p.text);
+  }
   if (!q || q.startsWith(':')) return [];
   for (const f of [color, bases, units, timeZone, dateMath, unix, percentOf, math]) {
     const r = f(q, now);
