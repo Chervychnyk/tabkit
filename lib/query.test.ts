@@ -53,6 +53,7 @@ test('segments', () => {
 
 test('prefix hints and urls', () => {
   assert.equal(search(items, ':').length, 19);
+  assert.deepEqual(search(items, '?'), search(items, ':'));
   assert.equal(search(items, ':uuid')[0]?.kind, 'answer');
   assert.equal(search(items, '2+2')[0]?.title, '4');
   assert.equal(search(items, ':d')[0], undefined); // exact prefix, no downloads

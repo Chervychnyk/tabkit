@@ -17,7 +17,7 @@ chrome:// pages, where the palette opens in its own window.
 
 Prefixes: `:t` tabs+commands · `:b` bookmarks · `:h` history · `:d` downloads · `:r` recently closed
 · `:p` pinned · `:c` commands · `:s` web search · `:ss` screenshots · `:cp` colour picker · `:rl` ruler.
-Type `:` to list them; the Tools tab lists every tool. Results are grouped by kind with matched letters
+Type `?` (or `:`) to list them; the Tools tab lists every tool. Results are grouped by kind with matched letters
 highlighted.
 
 Downloads (`:d`, not in the default list): rows show size or Downloading… / Failed / File missing; Enter opens

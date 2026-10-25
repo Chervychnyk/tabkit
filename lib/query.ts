@@ -99,8 +99,9 @@ export function search(items: Item[], query: string, chip: Filter = 'all', engin
     return hit!.text ? rank(hit!.text, pool) : pool;
   }
   const { filter, text } = parseQuery(query);
-  if (!filter && /^:\w*$/.test(query))
-    return hints(query).map(({ key, label }) => ({ id: `prefix:${key}`, kind: 'prefix', title: `:${key}  ${label}`, command: `:${key} ` }));
+  // "?" lists every prefix; ":" and ":h…" list the ones that still fit.
+  if (query === '?' || (!filter && /^:\w*$/.test(query)))
+    return hints(query === '?' ? ':' : query).map(({ key, label }) => ({ id: `prefix:${key}`, kind: 'prefix', title: label, command: `:${key} ` }));
   const f = filter ?? chip;
   if (f === 'tools') return text ? rank(text, TOOL_ITEMS, {}) : TOOL_ITEMS;
   const out: Item[] = !filter && chip === 'all' ? answer(text) : [];

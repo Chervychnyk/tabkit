@@ -60,7 +60,6 @@
     tab: 'Tabs', command: 'Commands', bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed',
   };
   const SOURCES: Partial<Record<Filter, string>> = { bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed' };
-  const HINTS: [string, string][] = [[':t', 'tabs'], [':b', 'bookmarks'], [':h', 'history'], [':ai', 'AI chat'], [':em', 'emoji'], [':wx', 'weather'], [':', 'all prefixes']];
   const EMOJI_COLS = 10;
   const SKIN_TONES: [string, string][] = [
     ['Default', '#ffc83d'], ['Light', '#f7dece'], ['Medium-Light', '#e0bb95'], ['Medium', '#bf8f68'], ['Medium-Dark', '#9b643d'], ['Dark', '#594539'],
@@ -280,7 +279,7 @@
       bind:this={input}
       bind:value={query}
       oninput={() => { sel = 0; qr = undefined; }}
-      placeholder="Search tabs, bookmarks, history… or type : for prefixes"
+      placeholder="Search tabs, bookmarks, history… or type ? for all prefixes"
       spellcheck="false"
       autocomplete="off"
       role="combobox"
@@ -303,13 +302,6 @@
           <button class:on={active === f} onclick={() => { pick(f); input.focus(); }}>{label}</button>
         {/each}
       </div>
-      {#if !query && chip === 'all'}
-        <div class="hints">
-          {#each HINTS as [p, label]}
-            <button onclick={() => { query = p === ':' ? ':' : `${p} `; sel = 0; input.focus(); }}><kbd>{p}</kbd> {label}</button>
-          {/each}
-        </div>
-      {/if}
     {/if}
     {#if chatMode}
       <!-- chat renders its own body -->
@@ -368,6 +360,8 @@
             <span class="swatch" style:background={item.color}></span>
           {:else if item.url && !GLYPH[item.kind]}
             <img src={favicon(item.url)} alt="" width="16" height="16" />
+          {:else if item.kind === 'prefix'}
+            <span class="glyph key">{item.command!.trim()}</span>
           {:else}
             <span class="glyph">{GLYPH[item.kind] ?? '•'}</span>
           {/if}
@@ -464,10 +458,6 @@
   mark { background: none; color: var(--accent); font-weight: 600; }
   li.notice { flex-wrap: wrap; gap: 6px; }
   li.notice button { all: unset; cursor: pointer; color: var(--accent); }
-  .hints { flex: none; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 14px; border-bottom: 1px solid var(--line); font-size: 12px; }
-  .hints button { all: unset; cursor: pointer; color: var(--muted); }
-  .hints button:hover, .hints button:focus-visible { color: var(--fg); }
-  kbd { font: 11px ui-monospace, Menlo, monospace; color: var(--fg); background: var(--hl); padding: 1px 4px; border-radius: 4px; }
   /* max-content rows: auto rows get squeezed below the emoji height once the grid overflows the panel */
   .emoji-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-auto-rows: max-content; gap: 2px; align-content: start; }
   .emoji-grid li { justify-content: center; font-size: 22px; padding: 6px 0; min-height: 0; }
@@ -487,6 +477,7 @@
   .swatch { border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.4); }
   .glyph { text-align: center; color: var(--muted); line-height: 16px; }
   .icon { color: var(--fg); font-size: 15px; }
+  .glyph.key { width: 44px; text-align: left; color: var(--fg); font: 12px/16px ui-monospace, Menlo, monospace; }
   .text { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: baseline; }
   .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .url { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; max-width: 40%; }
