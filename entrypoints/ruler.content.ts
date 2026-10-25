@@ -5,9 +5,9 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   registration: 'runtime',
   main() {
-    const g = globalThis as { __tabcmdrRuler?: (() => void) | null };
-    if (g.__tabcmdrRuler) return g.__tabcmdrRuler();
-    g.__tabcmdrRuler = start(() => (g.__tabcmdrRuler = null));
+    const g = globalThis as { __tabkitRuler?: (() => void) | null };
+    if (g.__tabkitRuler) return g.__tabkitRuler();
+    g.__tabkitRuler = start(() => (g.__tabkitRuler = null));
   },
 });
 
@@ -25,7 +25,7 @@ const CSS = `
 `;
 
 function start(onStop: () => void) {
-  const host = document.createElement('tabcmdr-ruler');
+  const host = document.createElement('tabkit-ruler');
   const root = host.attachShadow({ mode: 'closed' });
   root.innerHTML = `<style>${CSS}</style><div class="layer"><div class="marks"></div><div class="guides"></div>
     <div class="help">Hover: size · Click: anchor, then hover to measure gaps<br>H / V: add guide at cursor · drag to move · double-click to remove · Esc: exit</div></div>`;

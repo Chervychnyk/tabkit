@@ -7,7 +7,7 @@ const DATA_SOURCE_PERMISSIONS = ['bookmarks', 'history', 'downloads', 'downloads
 export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],
   manifest: {
-    name: 'TabCmdr (personal)',
+    name: 'Tabkit',
     description: 'Command palette for tabs, bookmarks, history and more.',
     permissions: ['tabs', 'scripting', 'activeTab', 'storage', 'favicon', 'declarativeNetRequestWithHostAccess', ...(E2E ? DATA_SOURCE_PERMISSIONS : [])],
     // Data sources the user switches on in Settings (Data sources).

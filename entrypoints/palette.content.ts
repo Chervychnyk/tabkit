@@ -3,7 +3,7 @@ import Palette from '@/components/Palette.svelte';
 import { loadSettings } from '@/lib/settings';
 
 type Ui = { remove: () => void };
-const g = globalThis as { __tabcmdrUi?: Ui | null };
+const g = globalThis as { __tabkitUi?: Ui | null };
 
 // Injected by the background on each ⌘K; a second injection closes the open palette.
 export default defineContentScript({
@@ -11,18 +11,18 @@ export default defineContentScript({
   registration: 'runtime',
   cssInjectionMode: 'ui',
   async main(ctx) {
-    if (g.__tabcmdrUi) {
-      g.__tabcmdrUi.remove();
-      g.__tabcmdrUi = null;
+    if (g.__tabkitUi) {
+      g.__tabkitUi.remove();
+      g.__tabkitUi = null;
       return;
     }
     const settings = await loadSettings();
     const close = () => {
       ui.remove();
-      g.__tabcmdrUi = null;
+      g.__tabkitUi = null;
     };
     const ui = await createShadowRootUi(ctx, {
-      name: 'tabcmdr-palette',
+      name: 'tabkit-palette',
       position: 'inline',
       anchor: 'html',
       isolateEvents: true,
@@ -30,6 +30,6 @@ export default defineContentScript({
       onRemove: (app) => app && unmount(app),
     });
     ui.mount();
-    g.__tabcmdrUi = ui;
+    g.__tabkitUi = ui;
   },
 });

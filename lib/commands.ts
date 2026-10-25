@@ -90,14 +90,14 @@ export const COMMANDS: Command[] = [
   { id: 'unmute-all', title: 'Unmute all tabs', run: () => muteAll(false) },
   { id: 'reload-all', title: 'Reload all tabs in window', run: async (ctx) => (await windowTabs(ctx)).forEach((t) => browser.tabs.reload(t.id!)) },
   ...PAGE_COMMANDS,
-  { id: 'settings', title: 'TabCmdr settings', run: () => browser.runtime.openOptionsPage() },
+  { id: 'settings', title: 'Tabkit settings', run: () => browser.runtime.openOptionsPage() },
   { id: 'toggle-site', title: 'Disable / enable the palette shortcut on this site', run: toggleSite },
 ];
 
 /** Optional permissions are granted in Settings; commands that need one explain where to turn it on. */
 async function needs(permission: 'bookmarks' | 'sessions', label: string) {
   if (!(await browser.permissions.contains({ permissions: [permission] })))
-    throw new Error(`${label} access is off; turn it on in TabCmdr settings → Data sources`);
+    throw new Error(`${label} access is off; turn it on in Tabkit settings → Data sources`);
 }
 
 async function reopenClosed() {

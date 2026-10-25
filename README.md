@@ -1,4 +1,4 @@
-# TabCmdr (personal)
+# Tabkit
 
 Command palette for Chromium browsers. WXT + Svelte 5.
 
@@ -10,6 +10,7 @@ npm test         # search/prefix logic
 npm run check    # type-check
 npm run verify   # check + test + build; the git pre-commit hook runs this
 npm run build:e2e  # test build: data-source permissions granted, no Settings tab on install
+npm run icons    # assets/icon.svg -> public/icon/{16,32,48,128}.png (needs rsvg-convert)
 ```
 
 ⌘K / Ctrl+K opens it on normal pages. ⌘⇧K / Ctrl+Shift+K or the toolbar icon also work on
@@ -55,7 +56,7 @@ Providers: Claude (Anthropic SDK), ChatGPT, Gemini, Grok, Groq, DeepSeek, Mistra
 OpenRouter (OpenAI-compatible) and Ollama/local servers (no key; the extension strips its `Origin`
 header on localhost so Ollama accepts it without `OLLAMA_ORIGINS`). Keys live in `chrome.storage.local`.
 
-Settings (command "TabCmdr settings", or the extension's options page): 16 themes plus System, an accent
+Settings (command "Tabkit settings", or the extension's options page): 16 themes plus System, an accent
 colour for System/Light/Dark (browsers don't expose their theme colours to extensions), Palette /
 Spotlight / Notch layouts, the in-page shortcut, which filter tabs show, sites where the shortcut is off
 (also the "Disable / enable the palette shortcut on this site" command), AI keys, models and presets.

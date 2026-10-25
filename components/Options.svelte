@@ -130,7 +130,7 @@
   <nav aria-label="Settings">
     <div class="brand">
       <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" /><path d="m7 8 4 4-4 4M13 16h4" /></svg>
-      <span><strong>TabCmdr</strong><small>Settings</small></span>
+      <span><strong>Tabkit</strong><small>Settings</small></span>
     </div>
     {#each VIEWS as [v, label]}
       <a href="#{v}" aria-current={view === v ? 'page' : undefined}>{label}</a>

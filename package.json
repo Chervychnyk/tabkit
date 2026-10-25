@@ -1,5 +1,5 @@
 {
-  "name": "tabcmdr",
+  "name": "tabkit",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,6 +8,7 @@
     "build": "wxt build",
     "build:e2e": "WXT_E2E=1 wxt build",
     "zip": "wxt zip",
+    "icons": "for s in 16 32 48 128; do rsvg-convert -w $s -h $s assets/icon.svg -o public/icon/$s.png; done",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "node --test 'lib/*.test.ts'",
     "verify": "npm run check && npm test && npm run build",

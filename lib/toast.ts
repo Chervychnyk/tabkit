@@ -1,6 +1,6 @@
 // Self-contained (no imports, no closures): also injected into pages via scripting.executeScript.
 export function toast(text: string) {
-  const host = document.createElement('tabcmdr-toast');
+  const host = document.createElement('tabkit-toast');
   const root = host.attachShadow({ mode: 'open' });
   const el = document.createElement('div');
   el.textContent = text;
