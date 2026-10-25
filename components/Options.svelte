@@ -403,7 +403,8 @@
   .seg button { border: 0; background: none; height: 28px; padding: 0 12px; border-radius: 6px; color: var(--muted); }
   .seg button.on { background: var(--ground); color: var(--text); font-weight: 500; }
 
-  .appearance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  /* 1.25fr gives the theme grid three 172px columns at 1440 (3 × 172 + 2 × 8 = 532). */
+  .appearance { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; align-items: start; }
   .stack { display: flex; flex-direction: column; gap: 16px; }
   .stack:first-child { border-top: 0; padding-top: 0; }
   .about.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -412,8 +413,9 @@
     container-type: size; position: sticky; top: 24px; height: 520px; overflow: hidden; border-radius: 12px;
     background: var(--raised); transform: translateZ(0); /* makes the palette's position:fixed relative to the frame */
   }
-  .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-  .theme { display: flex; align-items: center; gap: 8px; text-align: left; height: 40px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); }
+  /* 172px fits the longest name ("Catppuccin Mocha", 122px of text) on one line, so the grid drops a column instead of wrapping. */
+  .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; }
+  .theme { display: flex; align-items: center; gap: 8px; text-align: left; height: 40px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* :not(:disabled) out-ranks the generic button hover, which would paint the page's own --active over the theme's colours. */
   .theme:hover:not(:disabled) { background: var(--bg); box-shadow: inset 0 0 0 1px var(--control); }
   .theme.on, .theme.on:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--text); border-color: transparent; }
