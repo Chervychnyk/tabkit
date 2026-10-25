@@ -414,8 +414,9 @@
   }
   .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
   .theme { display: flex; align-items: center; gap: 8px; text-align: left; height: 40px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); }
-  .theme:hover { background: var(--bg); box-shadow: inset 0 0 0 1px var(--control); }
-  .theme.on { box-shadow: 0 0 0 2px var(--text); border-color: transparent; }
+  /* :not(:disabled) out-ranks the generic button hover, which would paint the page's own --active over the theme's colours. */
+  .theme:hover:not(:disabled) { background: var(--bg); box-shadow: inset 0 0 0 1px var(--control); }
+  .theme.on, .theme.on:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--text); border-color: transparent; }
   .swatch { width: 16px; height: 16px; border-radius: 50%; flex: none; background: var(--accent); box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.4); }
   .swatch.split { background: conic-gradient(#1c1c1e 0 50%, #ffffff 0); }
   input[type='color'] { width: 44px; height: 32px; padding: 0; border: 1px solid var(--control); border-radius: 8px; background: none; cursor: pointer; }
