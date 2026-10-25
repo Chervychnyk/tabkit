@@ -4,8 +4,8 @@
   import { interpret } from '@/lib/prefixes';
   import { search, segments } from '@/lib/query';
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
-  import { activeChip, EMOJI_COLS, step, TOOL_KINDS, type PaletteEvent } from '@/lib/palette';
-  import { parseTool, type Tool } from '@/lib/tools';
+  import { activeChip, EMOJI_COLS, step, type PaletteEvent } from '@/lib/palette';
+  import { parseTool, toolOf, TOOLS } from '@/lib/tools';
   import { send } from '@/lib/messages';
   import { toast } from '@/lib/toast';
   import type { Filter, Item, Message, TabAction } from '@/lib/types';
@@ -66,12 +66,6 @@
     ['Default', '#ffc83d'], ['Light', '#f7dece'], ['Medium-Light', '#e0bb95'], ['Medium', '#bf8f68'], ['Medium-Dark', '#9b643d'], ['Dark', '#594539'],
   ];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const TOOL_HINTS: Record<Tool, string> = {
-    emoji: '←↑↓→ move · ↵ copy · ⇧↵ copy :code: · Esc back to tools',
-    todo: '↵ add / check off · {mod}⌫ delete · Esc close',
-    rss: '↵ open · paste a feed URL to add it · {mod}⌫ on a feed removes it · Esc close',
-    weather: 'type a city to add it · ↵ copy · {mod}⌫ remove · Esc close',
-  };
   const isMac = navigator.userAgent.includes('Mac');
 
   let items = $state<Item[]>([]);
@@ -160,7 +154,7 @@
       await copy(item.copy ?? item.title, 'Copied');
       return close();
     }
-    if (TOOL_KINDS.has(item.kind) && !item.url) {
+    if (toolOf(item.kind) && !item.url) {
       const r = await call({ type: 'tool-run', item, alt: !newTab });
       if (r === null) return;
       if (r?.copy !== undefined) {
@@ -376,7 +370,7 @@
       {/each}
     </ul>
     {/if}
-    <footer>{#if chatMode}↵ send · ↵ on empty copies the last answer · Tab switch model · {isMac ? '⌘' : 'Ctrl'}⌫ clear chat · @page adds this page{:else if tool}{TOOL_HINTS[tool.tool].replaceAll('{mod}', isMac ? '⌘' : 'Ctrl')}{:else if downloadsView}↑↓ navigate · ↵ open file · Tab filter · Esc close · <button class="link" onclick={browseDownloads}>Browse downloads</button>{:else}↑↓ navigate · ↵ open · ⇧↵ in current tab · {isMac ? '⌘' : 'Ctrl'}⌫ close tab · Tab filter · Esc close{/if}</footer>
+    <footer>{#if chatMode}↵ send · ↵ on empty copies the last answer · Tab switch model · {isMac ? '⌘' : 'Ctrl'}⌫ clear chat · @page adds this page{:else if tool}{TOOLS[tool.tool].hint.replaceAll('{mod}', isMac ? '⌘' : 'Ctrl')}{:else if downloadsView}↑↓ navigate · ↵ open file · Tab filter · Esc close · <button class="link" onclick={browseDownloads}>Browse downloads</button>{:else}↑↓ navigate · ↵ open · ⇧↵ in current tab · {isMac ? '⌘' : 'Ctrl'}⌫ close tab · Tab filter · Esc close{/if}</footer>
   </div>
 </div>
 

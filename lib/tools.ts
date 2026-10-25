@@ -1,8 +1,20 @@
 // Pure parts of the tools (prefixes, emoji search, feed parsing, weather codes). Storage and network live in toolbox.ts.
 import fuzzysort from 'fuzzysort';
+import type { Kind } from './types.ts';
 import { interpret } from './prefixes.ts';
 
 export type Tool = 'emoji' | 'todo' | 'rss' | 'weather';
+
+/** Per tool: the kind of row it lists, and the palette footer while it's open ({mod} is ⌘ or Ctrl). */
+export const TOOLS: Record<Tool, { kind: Kind; hint: string }> = {
+  emoji: { kind: 'emoji', hint: '←↑↓→ move · ↵ copy · ⇧↵ copy :code: · Esc back to tools' },
+  todo: { kind: 'todo', hint: '↵ add / check off · {mod}⌫ delete · Esc close' },
+  rss: { kind: 'feed', hint: '↵ open · paste a feed URL to add it · {mod}⌫ on a feed removes it · Esc close' },
+  weather: { kind: 'weather', hint: 'type a city to add it · ↵ copy · {mod}⌫ remove · Esc close' },
+};
+
+/** The tool that lists rows of this kind, if any. */
+export const toolOf = (kind: Kind) => (Object.keys(TOOLS) as Tool[]).find((t) => TOOLS[t].kind === kind);
 
 export function parseTool(q: string): { tool: Tool; text: string } | null {
   const p = interpret(q);

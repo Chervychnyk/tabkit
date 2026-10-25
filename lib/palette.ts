@@ -1,7 +1,7 @@
 // The palette's keyboard and chip logic as one pure step: state + event → next state and the side effect to run.
 // Palette.svelte owns the async work (messages, clipboard, focus, scrolling) and runs the effect.
 import { parseQuery } from './query.ts';
-import { gridStep, type Tool } from './tools.ts';
+import { gridStep, toolOf, type Tool } from './tools.ts';
 import type { Filter, Item } from './types.ts';
 
 export interface PaletteState { query: string; chip: Filter; sel: number }
@@ -29,7 +29,6 @@ export type Effect =
   | { do: 'tab-close' | 'tool-delete'; item: Item };
 
 export const EMOJI_COLS = 10;
-export const TOOL_KINDS = new Set<Item['kind']>(['emoji', 'todo', 'feed', 'weather']);
 
 /** The chip shown as on: a filter prefix (:h, :b…) lights its chip, otherwise the picked one. */
 export const activeChip = (s: Pick<PaletteState, 'query' | 'chip'>): Filter => parseQuery(s.query).filter ?? s.chip;
@@ -59,7 +58,7 @@ export function step(s: PaletteState, e: PaletteEvent, v: View): { state: Palett
   if (key === 'ArrowUp') return at(s.sel - 1);
   if (key === 'Enter') return cur ? step(s, { type: 'activate', item: cur, newTab: !shift }, v) : { state: s };
   if (key === 'Backspace' && mod && cur?.kind === 'tab') return { state: s, effect: { do: 'tab-close', item: cur } };
-  if (key === 'Backspace' && mod && cur && TOOL_KINDS.has(cur.kind)) return { state: s, effect: { do: 'tool-delete', item: cur } };
+  if (key === 'Backspace' && mod && cur && toolOf(cur.kind)) return { state: s, effect: { do: 'tool-delete', item: cur } };
   if (key === 'Tab' && !v.tool) {
     const i = v.chips.indexOf(activeChip(s));
     return step(s, { type: 'pick', chip: v.chips[(i + (shift ? v.chips.length - 1 : 1)) % v.chips.length]! }, v);
