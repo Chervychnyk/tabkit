@@ -100,7 +100,10 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
     tabGroup: t.groupId > 0 ? { title: groupOf.get(t.groupId)?.title, color: groupOf.get(t.groupId)?.color } : undefined,
     split: splitOf(t) !== -1 || undefined,
   }));
-  for (const c of COMMANDS) items.push({ id: `cmd:${c.id}`, kind: 'command', title: c.title, command: c.id });
+  // Most-run commands first; a stable sort keeps the list's own order among equals (and for never-run ones).
+  const uses = await commandUses();
+  for (const c of [...COMMANDS].sort((a, b) => (uses[b.id] ?? 0) - (uses[a.id] ?? 0)))
+    items.push({ id: `cmd:${c.id}`, kind: 'command', title: c.title, command: c.id });
 
   const walk = (nodes: Browser.bookmarks.BookmarkTreeNode[]) => {
     for (const n of nodes) {
@@ -128,6 +131,13 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   return { items, missing };
 }
 
+// shortcut: all-time run counts, so an old favourite outranks a new habit for a while; decay them if that bites.
+const commandUses = async () => ((await browser.storage.local.get('commandUses')).commandUses ?? {}) as Record<string, number>;
+async function countUse(id: string) {
+  const uses = await commandUses();
+  await browser.storage.local.set({ commandUses: { ...uses, [id]: (uses[id] ?? 0) + 1 } });
+}
+
 async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean): Promise<RunResult | void> {
   switch (item.kind) {
     case 'tab':
@@ -135,6 +145,7 @@ async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean): Promise<
       return void (await browser.windows.update(item.windowId!, { focused: true }));
     case 'command': {
       const c = COMMANDS.find((c) => c.id === item.command);
+      if (c) await countUse(c.id);
       if (!c?.deferred) {
         // Commands resolve to whatever their browser call returns; only page.ts's copy/QR ones hand anything back.
         const { copy, qr } = ((await c?.run(ctx)) ?? {}) as RunResult;

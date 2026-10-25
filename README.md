@@ -33,7 +33,7 @@ opens it in Chrome's split view beside the current tab (Chrome 155+); a split ta
 as does the "Undo split view of current tab" command. Settings opens on
 install so you can switch them on (Settings → Data sources); turning one off gives the permission back.
 
-Page tools (`:c` or just type): zoom, hard reload, print, scroll, view source, full screen, copy
+Commands are listed most-used first. Page tools (`:c` or just type): zoom, hard reload, print, scroll, view source, full screen, copy
 URL / title / Markdown link, open in incognito, QR code, color picker, ruler, and screenshots
 (visible / selected area / full page → copy or save PNG).
 
