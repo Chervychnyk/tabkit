@@ -20,16 +20,40 @@
     ['all', 'All'], ['tab', 'Tabs'], ['bookmark', 'Bookmarks'], ['history', 'History'], ['download', 'Downloads'], ['closed', 'Recently closed'], ['tools', 'Tools'],
   ];
   const CHIPS = $derived(ALL_CHIPS.filter(([f]) => f === 'all' || settings.chips.includes(f)));
-  const TAB_ACTIONS: [TabAction | 'copy', string, string][] = [
-    ['reload', '↻', 'Reload'], ['mute', '♪', 'Mute / unmute'], ['pin', '⊙', 'Pin / unpin'], ['duplicate', '⧉', 'Duplicate'],
-    ['incognito', '◐', 'Open in incognito'], ['new-window', '⇱', 'Move to new window'], ['ungroup', '⊖', 'Remove from group'], ['copy', '⎘', 'Copy URL'],
-    ['close', '✕', 'Close tab'],
+  // Row button icons: 24×24 stroked paths, drawn in currentColor.
+  const PIN = '<path d="M9 3h6l-1 7 4 4H6l4-4z"/><path d="M12 14v7"/>';
+  const ICONS: Record<string, string> = {
+    reload: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+    speaker: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>',
+    muted: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="m16 9 6 6"/><path d="m22 9-6 6"/>',
+    pin: PIN,
+    pinned: PIN.replace('<path ', '<path fill="currentColor" '),
+    duplicate: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/><path d="M14.5 11.5v6"/><path d="M11.5 14.5h6"/>',
+    window: '<path d="M14 3h7v7"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>',
+    ungroup: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+    folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    copy: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+    close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  };
+  /** A tab row's buttons: [action, icon, label]; labels and icons follow the tab's state. Close stays last. */
+  const tabButtons = (t: Item): [TabAction, string, string][] => [
+    ['reload', 'reload', 'Reload tab'],
+    t.muted ? ['mute', 'muted', 'Unmute tab'] : ['mute', 'speaker', 'Mute tab'],
+    t.pinned ? ['pin', 'pinned', 'Unpin tab'] : ['pin', 'pin', 'Pin tab'],
+    ['duplicate', 'duplicate', 'Duplicate tab'],
+    ['new-window', 'window', 'Move to new window'],
+    ...(t.tabGroup ? [['ungroup', 'ungroup', 'Remove from group'] as [TabAction, string, string]] : []),
+    ['close', 'close', 'Close tab'],
   ];
+  const TAB_TOASTS: Record<TabAction, (t: Item) => string> = {
+    reload: () => 'Tab reloaded', mute: (t) => (t.muted ? 'Tab unmuted' : 'Tab muted'), pin: (t) => (t.pinned ? 'Tab unpinned' : 'Tab pinned'),
+    duplicate: () => 'Tab duplicated', 'new-window': () => 'Moved to new window', ungroup: () => 'Removed from group', close: () => 'Tab closed',
+  };
   // Chrome's tab group colours.
   const GROUP_COLORS: Record<string, string> = {
     grey: '#5f6368', blue: '#1a73e8', red: '#d93025', yellow: '#f9ab00', green: '#188038', pink: '#d01884', purple: '#a142f4', cyan: '#007b83', orange: '#fa903e',
   };
-  const DOWNLOAD_ACTIONS: ['show' | 'copy' | 'erase', string, string][] = [['show', '↗', 'Show in folder'], ['copy', '⎘', 'Copy source URL'], ['erase', '✕', 'Remove from list (keeps the file)']];
+  const DOWNLOAD_ACTIONS: ['show' | 'copy' | 'erase', string, string][] = [['show', 'folder', 'Show in folder'], ['copy', 'copy', 'Copy source URL'], ['erase', 'close', 'Remove from list (keeps the file)']];
   const GLYPH: Partial<Record<Item['kind'], string>> = { command: '›', search: '⌕', prefix: ':', answer: '=' };
   const GROUPS: Partial<Record<Item['kind'], string>> = {
     tab: 'Tabs', command: 'Commands', bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed',
@@ -175,12 +199,11 @@
     }, () => {});
   }
 
-  async function tabAction(action: TabAction | 'copy', item: Item) {
+  async function tabAction(action: TabAction, item: Item) {
     if (demo) return;
-    if (action === 'copy') return copy(item.url ?? '', 'URL copied');
     const r: { error?: string } | undefined = await send({ type: 'tab-action', action, tabId: item.tabId! });
     if (r?.error) return toast(r.error);
-    if (action === 'ungroup') toast('Removed from group');
+    toast(TAB_TOASTS[action](item));
     if (item.tabId === ctxTabId && (action === 'close' || action === 'new-window')) return close();
     await load();
     select(sel);
@@ -236,6 +259,10 @@
   }
   const favicon = (url: string) => `chrome-extension://${browser.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
 </script>
+
+{#snippet svg(icon: string)}
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{@html ICONS[icon]}</svg>
+{/snippet}
 
 <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 <div class="backdrop layout-{settings.layout}" style={themeStyle(settings.theme, settings.accent)} class:standalone class:closing onclick={(e) => e.target === e.currentTarget && close()} {onkeydown}>
@@ -345,15 +372,15 @@
             {#if item.pinned}<span class="badge">pinned</span>{/if}
             {#if item.audible || item.muted}<span class="badge">{item.muted ? 'muted' : 'playing'}</span>{/if}
             <span class="actions">
-              {#each TAB_ACTIONS.filter(([a]) => a !== 'ungroup' || item.tabGroup) as [action, glyph, label]}
-                <button title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); tabAction(action, item); }}>{glyph}</button>
+              {#each tabButtons(item) as [action, icon, label]}
+                <button class:close={action === 'close'} title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); tabAction(action, item); }}>{@render svg(icon)}</button>
               {/each}
             </span>
           {/if}
           {#if item.kind === 'download'}
             <span class="actions">
-              {#each DOWNLOAD_ACTIONS as [action, glyph, label]}
-                <button title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); downloadAction(action, item); }}>{glyph}</button>
+              {#each DOWNLOAD_ACTIONS as [action, icon, label]}
+                <button class:close={action === 'erase'} title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); downloadAction(action, item); }}>{@render svg(icon)}</button>
               {/each}
             </span>
           {/if}
@@ -460,8 +487,9 @@
   .actions { display: none; gap: 2px; flex: none; }
   li.sel .actions { display: flex; }
   .actions button {
-    all: unset; cursor: pointer; width: 22px; height: 22px; text-align: center; line-height: 22px; border-radius: 4px; color: var(--muted);
+    all: unset; cursor: pointer; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 4px; color: var(--muted);
   }
+  .actions button.close { margin-left: 6px; }
   .actions button:hover, .actions button:focus-visible { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); color: var(--fg); }
   .qr { display: flex; flex-direction: column; align-items: center; padding: 24px; color: var(--muted); font-size: 12px; }
   .qr :global(svg) { width: 240px; height: 240px; border-radius: 8px; }

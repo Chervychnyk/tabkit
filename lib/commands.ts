@@ -122,9 +122,7 @@ export async function runTabAction(action: TabAction, tabId: number) {
     case 'mute': return browser.tabs.update(tabId, { muted: !t.mutedInfo?.muted });
     case 'pin': return browser.tabs.update(tabId, { pinned: !t.pinned });
     case 'duplicate': return browser.tabs.duplicate(tabId);
-    case 'incognito': return browser.windows.create({ url: t.url, incognito: true });
     case 'new-window': return browser.windows.create({ tabId });
-    case 'incognito': return browser.windows.create({ url: t.url, incognito: true });
     case 'close': return browser.tabs.remove(tabId);
     case 'ungroup':
       if (t.groupId === -1) throw new Error('Tab not in a group');

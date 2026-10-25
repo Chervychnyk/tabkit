@@ -2,7 +2,7 @@ import type { Tool } from './tools.ts';
 
 export type Kind = 'tab' | 'bookmark' | 'history' | 'download' | 'closed' | 'command' | 'search' | 'url' | 'prefix' | 'answer' | 'emoji' | 'todo' | 'feed' | 'weather';
 export type Filter = 'all' | 'tab' | 'bookmark' | 'history' | 'download' | 'closed' | 'pinned' | 'command' | 'search' | 'tools';
-export type TabAction = 'reload' | 'mute' | 'pin' | 'duplicate' | 'incognito' | 'new-window' | 'close' | 'ungroup';
+export type TabAction = 'reload' | 'mute' | 'pin' | 'duplicate' | 'new-window' | 'close' | 'ungroup';
 
 export interface Item {
   id: string;
