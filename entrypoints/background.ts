@@ -2,6 +2,7 @@ import type { Browser } from 'wxt/browser';
 import { COMMANDS, runTabAction } from '@/lib/commands';
 import { allowLocalModels, listModels, onChatPort, targets } from '@/lib/ai';
 import { notify } from '@/lib/page';
+import { ago, fileSize } from '@/lib/query';
 import { DATA_SOURCES } from '@/lib/settings';
 import { toolDelete, toolItems, toolRun } from '@/lib/toolbox';
 import type { Item, Message } from '@/lib/types';
@@ -63,6 +64,9 @@ async function handle(msg: Message, sender: Browser.runtime.MessageSender) {
       return run(msg.item, await browser.tabs.get(msg.tabId), msg.newTab);
     case 'tab-action':
       return runTabAction(msg.action, msg.tabId);
+    case 'download-action':
+      // erase only drops the list entry; the file stays on disk
+      return msg.action === 'show' ? browser.downloads.show(msg.downloadId) : browser.downloads.erase({ id: msg.downloadId });
     case 'tool':
       return toolItems(msg.tool, msg.text);
     case 'tool-run':
@@ -86,7 +90,7 @@ async function load(): Promise<{ items: Item[]; missing: string[] }> {
     browser.tabs.query({}),
     when('bookmarks', () => browser.bookmarks.getTree(), []),
     when('history', () => browser.history.search({ text: '', startTime: Date.now() - HISTORY_DAYS * 864e5, maxResults: HISTORY_MAX }), []),
-    when('downloads', () => browser.downloads.search({ limit: 200, orderBy: ['-startTime'] }), []),
+    when('downloads', () => browser.downloads.search({ limit: 100, orderBy: ['-startTime'] }), []),
     when('sessions', () => browser.sessions.getRecentlyClosed({ maxResults: 25 }), []),
   ]);
   const items: Item[] = tabs.map((t) => ({
@@ -108,12 +112,15 @@ async function load(): Promise<{ items: Item[]; missing: string[] }> {
   for (const h of history)
     if (!open.has(h.url)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url });
 
-  for (const d of downloads)
-    items.push({ id: `dl:${d.id}`, kind: 'download', title: d.filename.split(/[\\/]/).pop() || d.url, url: d.finalUrl || d.url, downloadId: d.id });
+  for (const d of downloads) {
+    const note = d.state === 'in_progress' ? 'Downloading…' : d.state === 'interrupted' ? 'Failed' : !d.exists ? 'File missing' : fileSize(d.fileSize || d.totalBytes);
+    items.push({ id: `dl:${d.id}`, kind: 'download', title: d.filename.split(/[\\/]/).pop() || d.url, url: d.finalUrl || d.url, downloadId: d.id, note });
+  }
 
   for (const s of closed) {
-    if (s.tab) items.push({ id: `rc:${s.tab.sessionId}`, kind: 'closed', title: s.tab.title || s.tab.url || '', url: s.tab.url, sessionId: s.tab.sessionId });
-    else if (s.window) items.push({ id: `rc:${s.window.sessionId}`, kind: 'closed', title: `Window (${s.window.tabs?.length ?? 0} tabs)`, sessionId: s.window.sessionId });
+    const note = ago(s.lastModified * 1000); // sessions report seconds
+    if (s.tab) items.push({ id: `rc:${s.tab.sessionId}`, kind: 'closed', title: s.tab.title || s.tab.url || '', url: s.tab.url, sessionId: s.tab.sessionId, note });
+    else if (s.window) items.push({ id: `rc:${s.window.sessionId}`, kind: 'closed', title: `Window (${s.window.tabs?.length ?? 0} tabs)`, sessionId: s.window.sessionId, note });
   }
   return { items, missing };
 }

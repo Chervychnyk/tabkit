@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import Chat from '@/components/Chat.svelte';
-  import { search, segments } from '@/lib/query';
+  import { parseQuery, search, segments } from '@/lib/query';
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
   import { gridStep, parseTool, type Tool } from '@/lib/tools';
   import { toast } from '@/lib/toast';
@@ -24,6 +24,7 @@
     ['reload', '↻', 'Reload'], ['mute', '♪', 'Mute / unmute'], ['pin', '⊙', 'Pin / unpin'], ['duplicate', '⧉', 'Duplicate'],
     ['incognito', '◐', 'Open in incognito'], ['new-window', '⇱', 'Move to new window'], ['copy', '⎘', 'Copy URL'], ['close', '✕', 'Close tab'],
   ];
+  const DOWNLOAD_ACTIONS: ['show' | 'copy' | 'erase', string, string][] = [['show', '↗', 'Show in folder'], ['copy', '⎘', 'Copy source URL'], ['erase', '✕', 'Remove from list (keeps the file)']];
   const GLYPH: Partial<Record<Item['kind'], string>> = { command: '›', search: '⌕', prefix: ':', answer: '=' };
   const GROUPS: Partial<Record<Item['kind'], string>> = {
     tab: 'Tabs', command: 'Commands', bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed',
@@ -61,7 +62,8 @@
   const tool = $derived(parseTool(query));
   const chatMode = $derived(/^:ai(\s|$)/.test(query));
   let chat = $state<Chat>();
-  const results = $derived(tool ? toolResults : search(items, query, chip));
+  const results = $derived(tool ? toolResults : search(items, query, chip, settings.engines));
+  const downloadsView = $derived(!tool && (parseQuery(query).filter ?? chip) === 'download');
   const emojiGrid = $derived(tool?.tool === 'emoji');
   const grouped = $derived(!tool && chip !== 'tools');
   // Emoji sections: index ranges of results sharing a group header (one headerless section while searching).
@@ -175,6 +177,21 @@
     if (item.tabId === ctxTabId && (action === 'close' || action === 'new-window')) return close();
     await load();
     select(sel);
+  }
+
+  async function downloadAction(action: 'show' | 'copy' | 'erase', item: Item) {
+    if (demo) return;
+    if (action === 'copy') return copy(item.url ?? '', 'URL copied');
+    await send({ type: 'download-action', action, downloadId: item.downloadId! });
+    if (action === 'erase') {
+      await load();
+      select(sel);
+    }
+  }
+
+  function browseDownloads() {
+    send({ type: 'run', item: { id: 'downloads-page', kind: 'url', title: '', url: 'chrome://downloads' }, tabId: ctxTabId!, newTab: true });
+    close();
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -313,7 +330,8 @@
           {/if}
           <span class="text">
             <span class="title">{#each segments(item.title, item.hl) as s}{#if s.m}<mark>{s.t}</mark>{:else}{s.t}{/if}{/each}</span>
-            {#if item.url && item.kind !== 'search' && item.kind !== 'url'}<span class="url">{host(item.url)}</span>{/if}
+            {#if item.note}<span class="url">{item.note}</span>
+            {:else if item.url && item.kind !== 'search' && item.kind !== 'url'}<span class="url">{host(item.url)}</span>{/if}
           </span>
           {#if item.kind === 'tab'}
             <span class="actions">
@@ -324,6 +342,13 @@
             {#if item.pinned}<span class="badge">pinned</span>{/if}
             {#if item.audible || item.muted}<span class="badge">{item.muted ? 'muted' : 'playing'}</span>{/if}
           {/if}
+          {#if item.kind === 'download'}
+            <span class="actions">
+              {#each DOWNLOAD_ACTIONS as [action, glyph, label]}
+                <button title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); downloadAction(action, item); }}>{glyph}</button>
+              {/each}
+            </span>
+          {/if}
           {#if item.kind === 'answer'}<span class="kind">↵ copy</span>{/if}
         </li>
       {:else}
@@ -331,7 +356,7 @@
       {/each}
     </ul>
     {/if}
-    <footer>{#if chatMode}↵ send · ↵ on empty copies the last answer · Tab switch model · {isMac ? '⌘' : 'Ctrl'}⌫ clear chat · @page adds this page{:else if tool}{TOOL_HINTS[tool.tool].replaceAll('{mod}', isMac ? '⌘' : 'Ctrl')}{:else}↑↓ navigate · ↵ open · ⇧↵ in current tab · {isMac ? '⌘' : 'Ctrl'}⌫ close tab · Tab filter · Esc close{/if}</footer>
+    <footer>{#if chatMode}↵ send · ↵ on empty copies the last answer · Tab switch model · {isMac ? '⌘' : 'Ctrl'}⌫ clear chat · @page adds this page{:else if tool}{TOOL_HINTS[tool.tool].replaceAll('{mod}', isMac ? '⌘' : 'Ctrl')}{:else if downloadsView}↑↓ navigate · ↵ open file · Tab filter · Esc close · <button class="link" onclick={browseDownloads}>Browse downloads</button>{:else}↑↓ navigate · ↵ open · ⇧↵ in current tab · {isMac ? '⌘' : 'Ctrl'}⌫ close tab · Tab filter · Esc close{/if}</footer>
   </div>
 </div>
 
@@ -431,5 +456,6 @@
   .actions button:hover, .actions button:focus-visible { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); color: var(--fg); }
   .qr { display: flex; flex-direction: column; align-items: center; padding: 24px; color: var(--muted); font-size: 12px; }
   .qr :global(svg) { width: 240px; height: 240px; border-radius: 8px; }
+  footer .link { all: unset; cursor: pointer; color: var(--accent); }
   footer { flex: none; padding: 8px 14px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); }
 </style>

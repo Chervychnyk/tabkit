@@ -6,6 +6,7 @@
     ACCENT_THEMES, chatTargets, DATA_SOURCES, hotkeyLabel, hotkeyOf, loadSettings, PROVIDERS, saveSettings, THEMES, themeStyle,
     type Layout, type Preset, type Settings,
   } from '@/lib/settings';
+  import { ENGINES } from '@/lib/query';
   import type { Filter, Item } from '@/lib/types';
 
   const isMac = navigator.userAgent.includes('Mac');
@@ -189,6 +190,15 @@
         <div class="checks">
           {#each CHIPS as [f, l]}
             <label><input type="checkbox" checked={settings.chips.includes(f)} onchange={(e) => toggleChip(f, e.currentTarget.checked)} /> {l}</label>
+          {/each}
+        </div>
+      </div>
+      <div class="row">
+        <span class="label">Search engines</span>
+        <div class="checks">
+          {#each Object.keys(ENGINES) as name}
+            <label><input type="checkbox" checked={settings.engines.includes(name)}
+              onchange={(e) => (settings!.engines = Object.keys(ENGINES).filter((n) => (n === name ? e.currentTarget.checked : settings!.engines.includes(n))))} /> {name}</label>
           {/each}
         </div>
       </div>

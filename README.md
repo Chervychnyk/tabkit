@@ -20,6 +20,12 @@ Prefixes: `:t` tabs+commands · `:b` bookmarks · `:h` history · `:d` downloads
 Type `:` to list them; the Tools tab lists every tool. Results are grouped by kind with matched letters
 highlighted.
 
+Downloads (`:d`, not in the default list): rows show size or Downloading… / Failed / File missing; Enter opens
+the file (or its folder), row buttons show in folder, copy the source URL or remove the entry (file stays).
+Recently closed (`:r`): rows show how long ago; the default list shows the last 5; type `undo` to reopen the
+last one. Web search rows come last, one per engine enabled in Settings (Google, Bing, DuckDuckGo by default;
+Yahoo, Brave optional).
+
 Data sources: bookmarks, history, downloads and recently closed are optional permissions. Settings opens on
 install so you can switch them on (Settings → Data sources); turning one off gives the permission back.
 

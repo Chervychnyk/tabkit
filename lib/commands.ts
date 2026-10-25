@@ -69,7 +69,7 @@ export const COMMANDS: Command[] = [
   { id: 'new-tab', title: 'New tab', run: (ctx) => browser.tabs.create({ windowId: ctx.windowId }) },
   { id: 'new-window', title: 'New window', run: () => browser.windows.create({}) },
   { id: 'new-incognito', title: 'New incognito window', run: () => browser.windows.create({ incognito: true }) },
-  { id: 'reopen-closed', title: 'Reopen last closed tab', run: () => needs('sessions', 'Recently closed').then(() => browser.sessions.restore()) },
+  { id: 'reopen-closed', title: 'Undo close tab (reopen last closed)', run: reopenClosed },
   { id: 'close-tab', title: 'Close current tab', run: (ctx) => browser.tabs.remove(ctx.id!) },
   { id: 'duplicate-tab', title: 'Duplicate current tab', run: (ctx) => browser.tabs.duplicate(ctx.id!) },
   { id: 'pin-tab', title: 'Pin / unpin current tab', run: (ctx) => browser.tabs.update(ctx.id!, { pinned: !ctx.pinned }) },
@@ -97,6 +97,12 @@ export const COMMANDS: Command[] = [
 async function needs(permission: 'bookmarks' | 'sessions', label: string) {
   if (!(await browser.permissions.contains({ permissions: [permission] })))
     throw new Error(`${label} access is off; turn it on in TabCmdr settings → Data sources`);
+}
+
+async function reopenClosed() {
+  await needs('sessions', 'Recently closed');
+  if (!(await browser.sessions.getRecentlyClosed({ maxResults: 1 })).length) throw new Error('No recently closed tabs');
+  await browser.sessions.restore();
 }
 
 async function toggleSite(ctx: Tab) {

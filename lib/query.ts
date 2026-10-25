@@ -16,10 +16,10 @@ export const PREFIXES: Record<string, { filter: Filter; label: string }> = {
 
 export const ENGINES: Record<string, string> = {
   Google: 'https://www.google.com/search?q=',
-  DuckDuckGo: 'https://duckduckgo.com/?q=',
   Bing: 'https://www.bing.com/search?q=',
-  Brave: 'https://search.brave.com/search?q=',
+  DuckDuckGo: 'https://duckduckgo.com/?q=',
   Yahoo: 'https://search.yahoo.com/search?p=',
+  Brave: 'https://search.brave.com/search?q=',
 };
 
 /** Prefixes that narrow the palette to a few page commands. */
@@ -57,7 +57,7 @@ export function parseQuery(q: string): { filter: Filter | null; text: string } {
 }
 
 function matches(item: Item, f: Filter): boolean {
-  if (f === 'all') return true;
+  if (f === 'all') return item.kind !== 'download'; // downloads only show under :d or their filter
   if (f === 'tab') return item.kind === 'tab' || item.kind === 'command';
   if (f === 'pinned') return item.kind === 'tab' && !!item.pinned;
   return item.kind === f;
@@ -87,6 +87,22 @@ export function segments(text: string, hl: readonly number[] = []): { t: string;
   return out;
 }
 
+/** "740 KB", "1.2 GB" (decimal units, like the browser's downloads page). */
+export function fileSize(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = bytes > 0 ? Math.min(units.length - 1, Math.floor(Math.log10(bytes) / 3)) : 0;
+  const n = bytes / 1000 ** i;
+  return `${i && n < 10 ? n.toFixed(1) : Math.round(n)} ${units[i]}`;
+}
+
+/** "Just now", "18m ago", "3h ago", "2d ago". */
+export function ago(ms: number, now = Date.now()): string {
+  const m = Math.floor((now - ms) / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  return m < 1440 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
+}
+
 /** Stable group by kind, groups in order of first appearance, so the best match's group leads. */
 export function groupByKind(list: Item[]): Item[] {
   const groups = new Map<string, Item[]>();
@@ -94,7 +110,7 @@ export function groupByKind(list: Item[]): Item[] {
   return [...groups.values()].flat();
 }
 
-export function search(items: Item[], query: string, chip: Filter = 'all'): Item[] {
+export function search(items: Item[], query: string, chip: Filter = 'all', engines = Object.keys(ENGINES)): Item[] {
   if (/^:(tx|uuid|pwd)(\s|$)/.test(query)) return answer(query);
   const cmd = /^:(\w+)(?:\s+([\s\S]*))?$/.exec(query);
   const cp = cmd && COMMAND_PREFIXES[cmd[1]!];
@@ -119,16 +135,20 @@ export function search(items: Item[], query: string, chip: Filter = 'all'): Item
   const out: Item[] = !filter && chip === 'all' ? answer(text) : [];
   if (f !== 'search') {
     const pool = items.filter((i) => matches(i, f));
-    out.push(...groupByKind(text ? rank(text, pool) : pool.slice(0, LIMIT)));
+    const closed = (i: Item) => i.kind === 'closed';
+    // Before typing, All also shows the last few closed tabs below the open ones.
+    const shown = text ? rank(text, pool)
+      : f === 'all' ? [...pool.filter((i) => !closed(i)).slice(0, LIMIT), ...pool.filter(closed).slice(0, 5)]
+      : pool.slice(0, LIMIT);
+    out.push(...groupByKind(shown));
   }
   if (text && (f === 'all' || f === 'search')) {
     if (looksLikeUrl(text)) {
       const url = /^https?:\/\//.test(text) ? text : `https://${text}`;
       out.unshift({ id: 'url', kind: 'url', title: `Open ${url}`, url });
     }
-    const engines = f === 'search' ? Object.entries(ENGINES) : Object.entries(ENGINES).slice(0, 1);
-    for (const [name, base] of engines)
-      out.push({ id: `search:${name}`, kind: 'search', title: `Search ${name} for “${text}”`, url: base + encodeURIComponent(text) });
+    for (const [name, base] of Object.entries(ENGINES).filter(([n]) => engines.includes(n)))
+      out.push({ id: `search:${name}`, kind: 'search', title: `Search “${text}” on ${name}`, url: base + encodeURIComponent(text) });
   }
   return out;
 }

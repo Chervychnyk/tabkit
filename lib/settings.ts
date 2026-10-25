@@ -17,6 +17,8 @@ export interface Settings {
   /** in-page shortcut, e.g. "Mod+KeyK"; Mod = ⌘ on Mac, Ctrl elsewhere */
   hotkey: string;
   disabledDomains: string[];
+  /** web search engines offered for a query, in ENGINES order */
+  engines: string[];
   /** weather temperatures */
   fahrenheit: boolean;
   ai: { default: string; providers: Record<string, ProviderSettings>; presets: Preset[] };
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   chips: ['tab', 'bookmark', 'history', 'download', 'closed', 'tools'],
   hotkey: 'Mod+KeyK',
   disabledDomains: [],
+  engines: ['Google', 'Bing', 'DuckDuckGo'],
   fahrenheit: false,
   ai: { default: '', providers: {}, presets: [] },
 };
@@ -45,7 +48,7 @@ export const DATA_SOURCES = [
   { filter: 'bookmark', label: 'Bookmarks', permissions: ['bookmarks'], note: 'Search bookmarks; "Bookmark current tab"' },
   { filter: 'history', label: 'History', permissions: ['history'], note: 'Search the last 90 days of history' },
   { filter: 'download', label: 'Downloads', permissions: ['downloads', 'downloads.open'], note: 'List and open downloads; save screenshots without a prompt' },
-  { filter: 'closed', label: 'Recently closed', permissions: ['sessions'], note: 'Restore closed tabs and windows; "Reopen last closed tab"' },
+  { filter: 'closed', label: 'Recently closed', permissions: ['sessions'], note: 'Restore closed tabs and windows; "Undo close tab"' },
 ] as const;
 
 // --- Shortcut ---

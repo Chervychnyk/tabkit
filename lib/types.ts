@@ -25,6 +25,8 @@ export interface Item {
   icon?: string;
   /** tools: an image URL (e.g. a feed's site icon) shown instead of the favicon */
   image?: string;
+  /** a short status shown instead of the host: a download's size or state, how long ago a tab was closed */
+  note?: string;
   /** positions of the query's matched characters in title, for highlighting */
   hl?: readonly number[];
   data?: unknown;
@@ -37,6 +39,7 @@ export type Message =
   | { type: 'load'; tabId?: number }
   | { type: 'run'; item: Item; tabId: number; newTab: boolean }
   | { type: 'tab-action'; action: TabAction; tabId: number }
+  | { type: 'download-action'; action: 'show' | 'erase'; downloadId: number }
   | { type: 'tool'; tool: Tool; text: string }
   | { type: 'tool-run'; item: Item; alt: boolean }
   | { type: 'tool-delete'; item: Item }

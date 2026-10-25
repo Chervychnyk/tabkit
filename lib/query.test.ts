@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByKind, parseQuery, search, looksLikeUrl, segments, TOOL_ITEMS } from './query.ts';
+import { ago, fileSize, groupByKind, parseQuery, search, looksLikeUrl, segments, TOOL_ITEMS } from './query.ts';
 import type { Item } from './types.ts';
 
 const items: Item[] = [
@@ -58,4 +58,30 @@ test('prefix hints and urls', () => {
   assert.equal(search(items, ':d')[0], undefined); // exact prefix, no downloads
   assert.equal(search(items, 'example.com/x')[0]?.url, 'https://example.com/x');
   assert.ok(looksLikeUrl('localhost:3000') && !looksLikeUrl('hello world'));
+});
+
+test('downloads, recently closed and engines', () => {
+  const extra: Item[] = [
+    ...items,
+    { id: 'd1', kind: 'download', title: 'brand-assets-v3.zip', url: 'https://x/brand.zip' },
+    ...Array.from({ length: 7 }, (_, i): Item => ({ id: `rc${i}`, kind: 'closed', title: `Invoice ${i}`, url: `https://x/${i}` })),
+  ];
+  assert.ok(!search(extra, '').some((i) => i.kind === 'download')); // only under :d
+  assert.deepEqual(search(extra, ':d brand zip').map((i) => i.id), ['d1']);
+  assert.equal(search(extra, '').filter((i) => i.kind === 'closed').length, 5);
+  assert.equal(search(extra, ':r').length, 7);
+  const rows = search(extra, ':s cats', 'all', ['Google', 'DuckDuckGo']).map((i) => i.title);
+  assert.deepEqual(rows, ['Search “cats” on Google', 'Search “cats” on DuckDuckGo']);
+  assert.equal(search(extra, 'zzqq', 'all', []).length, 0);
+});
+
+test('fileSize and ago', () => {
+  assert.equal(fileSize(0), '0 B');
+  assert.equal(fileSize(740_000), '740 KB');
+  assert.equal(fileSize(1_234_567_890), '1.2 GB');
+  const now = 1e12;
+  assert.equal(ago(now - 20_000, now), 'Just now');
+  assert.equal(ago(now - 18 * 60_000, now), '18m ago');
+  assert.equal(ago(now - 3 * 3600_000, now), '3h ago');
+  assert.equal(ago(now - 50 * 3600_000, now), '2d ago');
 });
