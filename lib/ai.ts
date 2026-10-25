@@ -130,7 +130,7 @@ async function openai(t: ChatTarget, key: string, messages: Msgs, post: (e: Chat
 async function errorText(res: Response, t: ChatTarget) {
   const body = await res.text();
   let msg = body;
-  try { msg = JSON.parse(body).error?.message ?? JSON.parse(body).error ?? body; } catch {}
+  try { msg = JSON.parse(body).error?.message ?? JSON.parse(body).error ?? body; } catch { /* not JSON: keep the raw body */ }
   if (res.status === 401 || res.status === 403) return `${t.provider.name}: ${res.status} — check the API key (${msg})`.slice(0, 300);
   return `${t.provider.name}: HTTP ${res.status} ${String(msg).slice(0, 240)}`;
 }

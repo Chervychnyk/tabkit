@@ -8,7 +8,8 @@ npm run dev      # opens a dev browser with the extension and hot reload
 npm run build    # -> .output/chrome-mv3, load via chrome://extensions → Load unpacked
 npm test         # search/prefix logic
 npm run check    # type-check
-npm run verify   # check + test + build; the git pre-commit hook runs this
+npm run lint     # ESLint (TypeScript + Svelte rules)
+npm run verify   # check + lint + test + build; the git pre-commit hook and CI run this
 npm run build:e2e  # test build: data-source permissions granted, no Settings tab on install
 npm run icons    # assets/icon.svg -> public/icon/{16,32,48,128}.png (needs rsvg-convert)
 ```

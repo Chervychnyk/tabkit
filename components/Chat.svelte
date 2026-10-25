@@ -152,6 +152,7 @@
       <div class="msg {m.role}">
         {#if m.role === 'user'}{m.display ?? m.content}
         {:else if !m.content && streaming}<span class="dots">{thinking ? 'Thinking…' : '…'}</span>
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -- renderMarkdown escapes raw HTML and allows only safe links (markdown.test.ts) -->
         {:else}{@html renderMarkdown(m.content)}{/if}
       </div>
     {:else}

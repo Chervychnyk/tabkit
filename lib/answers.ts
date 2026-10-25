@@ -67,7 +67,7 @@ export function evaluate(src: string): number {
   const unary = (): { v: number; pct: boolean } => {
     if (peek() === '-') return eat(), { v: -unary().v, pct: false };
     if (peek() === '+') eat();
-    let v = power();
+    const v = power();
     if (peek() === '%') return eat(), { v, pct: true };
     return { v, pct: false };
   };
@@ -92,7 +92,10 @@ export function evaluate(src: string): number {
     if (FUNCS[name] && peek() === '(') {
       eat('(');
       const args = [add()];
-      while (peek() === ',') eat(), args.push(add());
+      while (peek() === ',') {
+        eat();
+        args.push(add());
+      }
       eat(')');
       return FUNCS[name](...args);
     }

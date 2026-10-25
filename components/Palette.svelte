@@ -112,6 +112,7 @@
   // Tools are answered by the background (storage, network); debounce typing and drop stale replies.
   $effect(() => {
     const t = tool;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- reading it reruns the effect when a tool action bumps it
     toolRev;
     if (!t) return;
     const n = ++toolSeq;
@@ -251,6 +252,7 @@
 </script>
 
 {#snippet svg(icon: string)}
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -- fixed SVG paths from ICONS above -->
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{@html ICONS[icon]}</svg>
 {/snippet}
 
@@ -280,7 +282,7 @@
       />
     {:else if !tool}
       <div class="chips">
-        {#each CHIPS as [f, label]}
+        {#each CHIPS as [f, label] (f)}
           <button class:on={active === f} onclick={() => { dispatch({ type: 'pick', chip: f }); input.focus(); }}>{label}</button>
         {/each}
       </div>
@@ -288,6 +290,7 @@
     {#if chatMode}
       <!-- chat renders its own body -->
     {:else if qr}
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG that uqr renders from the page URL -->
       <div class="qr">{@html qr}<p>Scan to open this page · Esc to close</p></div>
     {:else if emojiGrid}
       {@const cur = results[sel]}
@@ -296,7 +299,7 @@
         <span class="emoji-name">{cur?.title ?? ''}</span>
         {#if cur?.data}<button class="emoji-code" title="Copy :code: (⇧↵)" onclick={() => activate(cur, false)}>:{cur.data}:</button>{/if}
         <span class="tones" role="group" aria-label="Skin tone">
-          {#each SKIN_TONES as [label, color], t}
+          {#each SKIN_TONES as [label, color], t (label)}
             <button title={label} aria-label={label} aria-pressed={t === emojiTone} class:on={t === emojiTone} style:background={color} onclick={() => setTone(t)}></button>
           {/each}
         </span>
@@ -348,7 +351,7 @@
             <span class="glyph">{GLYPH[item.kind] ?? '•'}</span>
           {/if}
           <span class="text">
-            <span class="title">{#each segments(item.title, item.hl) as s}{#if s.m}<mark>{s.t}</mark>{:else}{s.t}{/if}{/each}</span>
+            <span class="title">{#each segments(item.title, item.hl) as s, i (i)}{#if s.m}<mark>{s.t}</mark>{:else}{s.t}{/if}{/each}</span>
             {#if item.note}<span class="url">{item.note}</span>
             {:else if item.url && item.kind !== 'search' && item.kind !== 'url'}<span class="url">{host(item.url)}</span>{/if}
           </span>
@@ -357,14 +360,14 @@
             {#if item.pinned}<span class="badge">pinned</span>{/if}
             {#if item.audible || item.muted}<span class="badge">{item.muted ? 'muted' : 'playing'}</span>{/if}
             <span class="actions">
-              {#each tabButtons(item) as [action, icon, label]}
+              {#each tabButtons(item) as [action, icon, label] (action)}
                 <button class:close={action === 'close'} title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); tabAction(action, item); }}>{@render svg(icon)}</button>
               {/each}
             </span>
           {/if}
           {#if item.kind === 'download'}
             <span class="actions">
-              {#each DOWNLOAD_ACTIONS as [action, icon, label]}
+              {#each DOWNLOAD_ACTIONS as [action, icon, label] (action)}
                 <button class:close={action === 'erase'} title={label} aria-label={label} onclick={(e) => { e.stopPropagation(); downloadAction(action, item); }}>{@render svg(icon)}</button>
               {/each}
             </span>

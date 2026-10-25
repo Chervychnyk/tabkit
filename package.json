@@ -11,17 +11,23 @@
     "zip": "wxt zip",
     "icons": "for s in 16 32 48 128; do rsvg-convert -w $s -h $s assets/icon.svg -o public/icon/$s.png; done",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "lint": "eslint .",
     "test": "node --test 'lib/*.test.ts'",
-    "verify": "npm run check && npm test && npm run build",
+    "verify": "npm run check && npm run lint && npm test && npm run build",
     "postinstall": "wxt prepare",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.5",
     "@wxt-dev/module-svelte": "^2.0.5",
+    "eslint": "^10.13.0",
+    "eslint-plugin-svelte": "^3.23.1",
+    "globals": "^17.13.0",
     "svelte": "^5.57.2",
     "svelte-check": "^4.7.7",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2",
     "wxt": "^0.21.4"
   },
   "dependencies": {

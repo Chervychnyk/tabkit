@@ -132,7 +132,7 @@
       <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" /><path d="m7 8 4 4-4 4M13 16h4" /></svg>
       <span><strong>Tabkit</strong><small>Settings</small></span>
     </div>
-    {#each VIEWS as [v, label]}
+    {#each VIEWS as [v, label] (v)}
       <a href="#{v}" aria-current={view === v ? 'page' : undefined}>{label}</a>
     {/each}
   </nav>
@@ -171,7 +171,7 @@
         <section>
           <div class="about"><h2>Filters</h2><p>The chips under the search box. All is always there; Tab cycles through them.</p></div>
           <div class="panel checks">
-            {#each CHIPS as [f, l]}
+            {#each CHIPS as [f, l] (f)}
               <label><input type="checkbox" checked={settings.chips.includes(f)} onchange={(e) => toggleChip(f, e.currentTarget.checked)} /> {l}</label>
             {/each}
           </div>
@@ -179,7 +179,7 @@
         <section>
           <div class="about"><h2>Web search</h2><p>One row per engine after the results, in this order.</p></div>
           <div class="panel checks">
-            {#each Object.keys(ENGINES) as name}
+            {#each Object.keys(ENGINES) as name (name)}
               <label><input type="checkbox" checked={settings.engines.includes(name)}
                 onchange={(e) => (settings!.engines = Object.keys(ENGINES).filter((n) => (n === name ? e.currentTarget.checked : settings!.engines.includes(n))))} /> {name}</label>
             {/each}
@@ -201,7 +201,7 @@
               <div class="about head">
                 <h2>Theme <span class="value">{settings.theme === 'system' ? 'System' : THEMES[settings.theme]?.name}</span></h2>
                 <div class="seg" role="radiogroup" aria-label="Show themes">
-                  {#each [['all', 'All'], ['dark', 'Dark'], ['light', 'Light']] as [v, l]}
+                  {#each [['all', 'All'], ['dark', 'Dark'], ['light', 'Light']] as [v, l] (v)}
                     <button role="radio" aria-checked={themeFilter === v} class:on={themeFilter === v} onclick={() => (themeFilter = v as typeof themeFilter)}>{l}</button>
                   {/each}
                 </div>
@@ -229,7 +229,7 @@
             <section class="stack">
               <div class="about"><h2>Layout</h2></div>
               <div class="layouts">
-                {#each LAYOUTS as [v, name, desc]}
+                {#each LAYOUTS as [v, name, desc] (v)}
                   <label class="card" class:on={settings.layout === v}>
                     <input type="radio" name="layout" value={v} bind:group={settings.layout} />
                     <span class="preview {v}"><span></span></span>
@@ -286,7 +286,7 @@
                       <button onclick={() => loadModels(p.id)} disabled={!p.keyless && !keys[p.id]}>Load models</button>
                     </span>
                   </label>
-                  <datalist id="models-{p.id}">{#each models[p.id] ?? [] as m}<option value={m}></option>{/each}</datalist>
+                  <datalist id="models-{p.id}">{#each models[p.id] ?? [] as m, i (i)}<option value={m}></option>{/each}</datalist>
                   <label class="field">Base URL<input placeholder={p.baseUrl}
                     value={cfg.baseUrl ?? ''} oninput={(e) => (provider(p.id).baseUrl = e.currentTarget.value.replace(/\/+$/, ''))} /></label>
                   {#if modelErrors[p.id]}<small class="error">{modelErrors[p.id]}</small>{/if}
@@ -302,7 +302,7 @@
               <div class="preset">
                 <input aria-label="Preset name" bind:value={pr.name} />
                 <select aria-label="Provider" bind:value={pr.provider}>
-                  {#each PROVIDERS as p}<option value={p.id}>{p.name}</option>{/each}
+                  {#each PROVIDERS as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
                 </select>
                 <input aria-label="Model (optional)" placeholder="provider's model" bind:value={pr.model} />
                 <button class="text danger" onclick={() => settings!.ai.presets.splice(i, 1)}>Remove</button>
