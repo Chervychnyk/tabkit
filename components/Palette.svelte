@@ -92,7 +92,9 @@
   const chatMode = $derived(/^:ai(\s|$)/.test(query));
   let chat = $state<Chat>();
   const results = $derived(tool ? toolResults : search(items, query, chip, settings.engines));
-  const downloadsView = $derived(!tool && (parseQuery(query).filter ?? chip) === 'download');
+  // A filter prefix (:h, :b…) lights its chip; picking a chip drops the prefix so the chip wins.
+  const active = $derived(parseQuery(query).filter ?? chip);
+  const downloadsView = $derived(!tool && active === 'download');
   const emojiGrid = $derived(tool?.tool === 'emoji');
   const grouped = $derived(!tool && chip !== 'tools');
   // Emoji sections: index ranges of results sharing a group header (one headerless section while searching).
@@ -224,6 +226,13 @@
     close();
   }
 
+  function pick(f: Filter) {
+    const p = parseQuery(query);
+    if (p.filter) query = p.text;
+    chip = f;
+    sel = 0;
+  }
+
   function onkeydown(e: KeyboardEvent) {
     const mod = isMac ? e.metaKey : e.ctrlKey;
     const cur = results[sel];
@@ -247,9 +256,8 @@
     else if (e.key === 'Backspace' && mod && cur?.kind === 'tab') tabAction('close', cur);
     else if (e.key === 'Backspace' && mod && cur && TOOL_KINDS.has(cur.kind)) send({ type: 'tool-delete', item: cur }).then(() => toolRev++);
     else if (e.key === 'Tab' && !tool) {
-      const i = CHIPS.findIndex(([f]) => f === chip);
-      chip = CHIPS[(i + (e.shiftKey ? CHIPS.length - 1 : 1)) % CHIPS.length]![0];
-      sel = 0;
+      const i = CHIPS.findIndex(([f]) => f === active);
+      pick(CHIPS[(i + (e.shiftKey ? CHIPS.length - 1 : 1)) % CHIPS.length]![0]);
     } else return;
     e.preventDefault();
   }
@@ -291,7 +299,7 @@
     {:else if !tool}
       <div class="chips">
         {#each CHIPS as [f, label]}
-          <button class:on={chip === f} onclick={() => { chip = f; sel = 0; input.focus(); }}>{label}</button>
+          <button class:on={active === f} onclick={() => { pick(f); input.focus(); }}>{label}</button>
         {/each}
       </div>
       {#if !query && chip === 'all'}
@@ -332,9 +340,9 @@
       </ul>
     {:else}
     <ul id="tc-results" role="listbox" bind:this={list}>
-      {#if SOURCES[chip] && missing.includes(chip)}
+      {#if SOURCES[active] && missing.includes(active)}
         <li class="empty notice">
-          {SOURCES[chip]} access is off.
+          {SOURCES[active]} access is off.
           <button onclick={() => { send({ type: 'open-settings' }); close(); }}>Turn it on in Settings</button>
         </li>
       {/if}
@@ -387,7 +395,7 @@
           {#if item.kind === 'answer'}<span class="kind">↵ copy</span>{/if}
         </li>
       {:else}
-        {#if !(SOURCES[chip] && missing.includes(chip))}<li class="empty">{items.length ? 'No results' : 'Loading…'}</li>{/if}
+        {#if !(SOURCES[active] && missing.includes(active))}<li class="empty">{items.length ? 'No results' : 'Loading…'}</li>{/if}
       {/each}
     </ul>
     {/if}
