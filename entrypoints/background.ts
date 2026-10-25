@@ -59,7 +59,10 @@ type Handlers = { [K in Message['type']]: (msg: Extract<Message, { type: K }>, s
 // One handler per message type; what each resolves to is that message's reply (Replies below).
 const HANDLERS = {
   toggle: async (_, sender) => void (sender.tab && (await toggle(sender.tab))),
-  load: async (msg, sender) => ({ ...(await load()), tabId: msg.tabId ?? sender.tab?.id }),
+  load: async (msg, sender) => {
+    const tabId = msg.tabId ?? sender.tab?.id;
+    return { ...(await load(tabId)), tabId };
+  },
   run: async (msg) => run(msg.item, await browser.tabs.get(msg.tabId), msg.newTab),
   'tab-action': async (msg) => void (await runTabAction(msg.action, msg.tabId)),
   // erase only drops the list entry; the file stays on disk
@@ -76,7 +79,7 @@ const HANDLERS = {
 /** The reply each message type resolves to. */
 export type Replies = { [K in Message['type']]: Awaited<ReturnType<(typeof HANDLERS)[K]>> };
 
-async function load(): Promise<{ items: Item[]; missing: string[] }> {
+async function load(current?: number): Promise<{ items: Item[]; missing: string[] }> {
   const granted = new Set<string>((await browser.permissions.getAll()).permissions);
   const missing = DATA_SOURCES.filter((d) => !granted.has(d.permissions[0])).map((d) => d.filter);
   const when = <T,>(perm: string, get: () => Promise<T>, empty: T) => (granted.has(perm) ? get() : Promise.resolve(empty));
@@ -89,6 +92,8 @@ async function load(): Promise<{ items: Item[]; missing: string[] }> {
     when('sessions', () => browser.sessions.getRecentlyClosed({ maxResults: 25 }), []),
   ]);
   const groupOf = new Map(groups.map((g) => [g.id, g]));
+  // The tab the palette opened on first, then the most recently used.
+  tabs.sort((a, b) => +(b.id === current) - +(a.id === current) || (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
   const items: Item[] = tabs.map((t) => ({
     id: `tab:${t.id}`, kind: 'tab', title: t.title || t.url || '', url: t.url,
     tabId: t.id, windowId: t.windowId, pinned: t.pinned, muted: t.mutedInfo?.muted, audible: t.audible,
