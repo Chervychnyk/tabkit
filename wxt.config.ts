@@ -8,6 +8,9 @@ export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],
   manifest: {
     name: 'Tabkit',
+    // Pins the extension id (mfkkblanhdohfjjhffnpfdcbbgbhmmbd) so it no longer depends on this folder's path. Public key only;
+    // the Chrome Web Store ignores it and assigns its own id.
+    key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyUWWfnYO1dsU7ZbhUiKW4CENnNyiUuplFMI/lEJvFKKtDZBss07CMf5CwwP2HGwxER7J2bqExBIhJn4taYVmu4Jqii3O20R5oY5bn4YjKubFucXrfzO6xot0Z8V25JLTDPPYwY6z65KB9eeR2iOhnbCX+WyL1Onk3Uo4OuWykQW8i0vwq/MW1UOZ2FmHmMisxDC4/hDp9pckYecgpcPVcKJNlHI+2yuhKYODTVfFQ64uKK3dFl/wf4hw/nRRE1YvINMwPbwKp2xhgxWzFGGUCLlBoeQqD8VSXZhxc217k6KJ4tBoTmkRu8UrQEJnxsIQPckYHkgGJMxDhADXiEsb3wIDAQAB',
     description: 'Command palette for tabs, bookmarks, history and more.',
     permissions: ['tabs', 'scripting', 'activeTab', 'storage', 'favicon', 'declarativeNetRequestWithHostAccess', ...(E2E ? DATA_SOURCE_PERMISSIONS : [])],
     // Data sources the user switches on in Settings (Data sources).

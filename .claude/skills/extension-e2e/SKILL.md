@@ -3,14 +3,14 @@ name: extension-e2e
 description: Drive the Tabkit extension in a real browser (agent-browser MCP). Use when checking a change in the palette, settings page, tools or AI chat in the browser, or taking screenshots of the UI.
 ---
 
-The Bash sandbox can't launch Chrome, so all browser work goes through the agent-browser MCP tools, session `tabkit`. The extension id is `ioheljfjjicdkllggdcjnlmeeaehcllk` (derived from the repo path).
+The Bash sandbox can't launch Chrome, so all browser work goes through the agent-browser MCP tools, session `tabkit`. The extension id is `mfkkblanhdohfjjhffnpfdcbbgbhmmbd` (pinned by the manifest `key` in wxt.config.ts).
 
 ## Steps
 
 1. **Build for tests**: `npm run build:e2e`. It grants the optional data sources (bookmarks, history, downloads, sessions) up front and skips opening Settings on install, which would steal keyboard focus from the page. Run `npm run build` again before handing the build to the user.
 2. **Load the build.** Content-script and options-page changes load on a page reload (`location.reload()`). A background change needs a relaunch, one call per message (close and open in the same message race, and the open comes up without the extension): `agent_browser_close`, then `agent_browser_open` with `session: "tabkit"`, `headed: true`, `extraArgs: ["--extension", "/Users/artem/code/tabcmdr/.output/chrome-mv3", "--profile", "/Users/artem/.agent-browser/profiles/tabkit"]`, `url: "https://example.com"`. The `--profile` folder keeps storage (settings, Ollama, chats) across relaunches; delete it for a first-install state.
    - **Relaunched** means the open result says `launched: true`. `reused: true` means the daemon reattached to the old browser, which still runs the old background: open a new `session` name with a new `--profile` folder instead.
-   - **Prove the build is live** before testing: on `chrome-extension://ioheljfjjicdkllggdcjnlmeeaehcllk/window.html`, `chrome.runtime.sendMessage(...)` (or `fetch('/background.js')`) returns something only the new code produces.
+   - **Prove the build is live** before testing: on `chrome-extension://mfkkblanhdohfjjhffnpfdcbbgbhmmbd/window.html`, `chrome.runtime.sendMessage(...)` (or `fetch('/background.js')`) returns something only the new code produces.
 3. **Seed settings** only when the profile lacks them (see Seeding).
 4. **Open the palette**: `agent_browser_press` `Meta+k` on the page, then install the helpers (see Helpers). A fresh launch leaves the page `document.visibilityState === 'hidden'` and the keypress lost: `agent_browser_tab_switch` to the tab, then press again.
 5. **Drive and assert** with `agent_browser_eval`, returning short strings. Anything slower than a couple of seconds (AI streaming, feeds, weather) runs as a background job: the script writes `window.__t`, then `agent_browser_wait_ms`, then read `window.__t`.
@@ -48,7 +48,7 @@ The repo's `.mcp.json` loads agent-browser with `--tools core,debug,mobile`: the
 
 ## Seeding
 
-Open `chrome-extension://ioheljfjjicdkllggdcjnlmeeaehcllk/options.html#ai` (or the view holding the setting) and change settings through the form (set `.value`, dispatch `input`), never with `chrome.storage.*.set`: the open page autosaves its own state about 300 ms later and overwrites direct writes. Example, enabling Ollama:
+Open `chrome-extension://mfkkblanhdohfjjhffnpfdcbbgbhmmbd/options.html#ai` (or the view holding the setting) and change settings through the form (set `.value`, dispatch `input`), never with `chrome.storage.*.set`: the open page autosaves its own state about 300 ms later and overwrites direct writes. Example, enabling Ollama:
 
 ```js
 (async () => {
