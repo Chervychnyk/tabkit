@@ -1,0 +1,19 @@
+# The same gate as the pre-commit hook: type-check, lint, unit tests, build.
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # the tests run .ts files directly and use JSON import attributes
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
