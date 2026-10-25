@@ -73,3 +73,7 @@ commands, `lib/prefixes.ts` is the one table of `:` prefixes and their parse,
 settings, themes and the provider catalog; `lib/ai.ts` streams chats over a runtime port;
 `components/Chat.svelte` and `components/Options.svelte` are the chat view and settings page. `hotkey.content.ts` is the only script that runs on every
 page; the palette is injected only when you open it.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
