@@ -12,6 +12,8 @@ export default defineConfig({
     // the Chrome Web Store ignores it and assigns its own id.
     key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyUWWfnYO1dsU7ZbhUiKW4CENnNyiUuplFMI/lEJvFKKtDZBss07CMf5CwwP2HGwxER7J2bqExBIhJn4taYVmu4Jqii3O20R5oY5bn4YjKubFucXrfzO6xot0Z8V25JLTDPPYwY6z65KB9eeR2iOhnbCX+WyL1Onk3Uo4OuWykQW8i0vwq/MW1UOZ2FmHmMisxDC4/hDp9pckYecgpcPVcKJNlHI+2yuhKYODTVfFQ64uKK3dFl/wf4hw/nRRE1YvINMwPbwKp2xhgxWzFGGUCLlBoeQqD8VSXZhxc217k6KJ4tBoTmkRu8UrQEJnxsIQPckYHkgGJMxDhADXiEsb3wIDAQAB',
     description: 'Command palette for tabs, bookmarks, history and more.',
+    // e2e builds carry their build time, so a test can tell whether the browser runs this build or a stale one.
+    ...(E2E && { version_name: new Date().toISOString() }),
     permissions: ['tabs', 'scripting', 'activeTab', 'storage', 'favicon', 'declarativeNetRequestWithHostAccess', ...(E2E ? DATA_SOURCE_PERMISSIONS : [])],
     // Data sources the user switches on in Settings (Data sources).
     optional_permissions: E2E ? [] : [...DATA_SOURCE_PERMISSIONS],
