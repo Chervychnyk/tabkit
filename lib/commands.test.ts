@@ -90,6 +90,15 @@ test('split: a grouped tab leaves its group to join an ungrouped or pinned curre
   assert.deepEqual([p.byId(2).pinned, p.byId(2).groupId], [true, -1]);
 });
 
+test('unsplit: undoes the split the tab is in, and refuses a tab that is not split', async () => {
+  const b = fakeBrowser([tab(1), tab(2)]);
+  b.byId(1).splitViewId = b.byId(2).splitViewId = 5;
+  await runTabAction('unsplit', 2);
+  assert.deepEqual(b.calls, ['unsplit 5']);
+  assert.equal(b.byId(1).splitViewId, -1);
+  await assert.rejects(runTabAction('unsplit', 2), /not in a split view/);
+});
+
 test('split: existing splits are undone first; the current tab and old browsers are refused', async () => {
   const b = fakeBrowser([tab(1), tab(2), tab(3)]);
   b.byId(1).splitViewId = b.byId(2).splitViewId = 5;

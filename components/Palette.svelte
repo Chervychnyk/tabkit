@@ -32,6 +32,7 @@
     pin: PIN,
     pinned: PIN.replace('<path ', '<path fill="currentColor" '),
     duplicate: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/><path d="M14.5 11.5v6"/><path d="M11.5 14.5h6"/>',
+    unsplit: '<rect x="2" y="4" width="8" height="16" rx="2"/><rect x="14" y="4" width="8" height="16" rx="2"/>',
     split: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
     window: '<path d="M14 3h7v7"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>',
     ungroup: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
@@ -47,13 +48,14 @@
     ['duplicate', 'duplicate', 'Duplicate tab'],
     ...(t.tabId !== ctxTabId ? [['split', 'split', 'Split view with this tab'] as [TabAction, string, string]] : []),
     ['new-window', 'window', 'Move to new window'],
+    ...(t.split ? [['unsplit', 'unsplit', 'Undo split view'] as [TabAction, string, string]] : []),
     ...(t.tabGroup ? [['ungroup', 'ungroup', 'Remove from group'] as [TabAction, string, string]] : []),
     ['close', 'close', 'Close tab'],
   ];
   const TAB_TOASTS: Record<TabAction, (t: Item) => string> = {
     reload: () => 'Tab reloaded', mute: (t) => (t.muted ? 'Tab unmuted' : 'Tab muted'), pin: (t) => (t.pinned ? 'Tab unpinned' : 'Tab pinned'),
     duplicate: () => 'Tab duplicated', 'new-window': () => 'Moved to new window', ungroup: () => 'Removed from group', close: () => 'Tab closed',
-    split: () => 'Split view with this tab',
+    split: () => 'Split view with this tab', unsplit: () => 'Split view undone',
   };
   // Chrome's tab group colours.
   const GROUP_COLORS: Record<string, string> = {

@@ -1,5 +1,5 @@
 import type { Browser } from 'wxt/browser';
-import { COMMANDS, runTabAction } from '@/lib/commands';
+import { COMMANDS, runTabAction, splitOf } from '@/lib/commands';
 import { allowLocalModels, listModels, onChatPort, targets } from '@/lib/ai';
 import { notify } from '@/lib/page';
 import { ago, fileSize } from '@/lib/query';
@@ -98,6 +98,7 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
     id: `tab:${t.id}`, kind: 'tab', title: t.title || t.url || '', url: t.url,
     tabId: t.id, windowId: t.windowId, pinned: t.pinned, muted: t.mutedInfo?.muted, audible: t.audible,
     tabGroup: t.groupId > 0 ? { title: groupOf.get(t.groupId)?.title, color: groupOf.get(t.groupId)?.color } : undefined,
+    split: splitOf(t) !== -1 || undefined,
   }));
   for (const c of COMMANDS) items.push({ id: `cmd:${c.id}`, kind: 'command', title: c.title, command: c.id });
 

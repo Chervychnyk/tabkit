@@ -78,6 +78,7 @@ export const COMMANDS: Command[] = [
   { id: 'move-new-window', title: 'Move current tab to new window', run: (ctx) => browser.windows.create({ tabId: ctx.id }) },
   { id: 'bookmark-tab', title: 'Bookmark current tab', run: (ctx) => needs('bookmarks', 'Bookmarks').then(() => browser.bookmarks.create({ title: ctx.title, url: ctx.url })) },
   { id: 'ungroup-tab', title: 'Remove current tab from group', run: (ctx) => runTabAction('ungroup', ctx.id!).then(() => notify(ctx, 'Removed from group')) },
+  { id: 'unsplit-tab', title: 'Undo split view of current tab', run: (ctx) => runTabAction('unsplit', ctx.id!).then(() => notify(ctx, 'Split view undone')) },
   { id: 'close-duplicates', title: 'Close duplicate tabs', run: closeDuplicates },
   { id: 'close-left', title: 'Close tabs to the left', run: (ctx) => closeWhere(ctx, (t) => t.index >= ctx.index) },
   { id: 'close-right', title: 'Close tabs to the right', run: (ctx) => closeWhere(ctx, (t) => t.index <= ctx.index) },
@@ -128,12 +129,15 @@ export async function runTabAction(action: TabAction, tabId: number, ctxTabId?: 
       if (t.groupId === -1) throw new Error('Tab not in a group');
       return browser.tabs.ungroup(tabId); // the browser deletes a group once its last tab leaves
     case 'split': return splitWith(tabId, ctxTabId);
+    case 'unsplit':
+      if (splitOf(t) === -1) throw new Error('Tab not in a split view');
+      return splitApi().unsplit(splitOf(t));
   }
 }
 
 // Split View API (Chrome 155+), not in the bundled browser types yet.
 const splitApi = () => browser.tabs as unknown as { createSplit?(tabIds: number[]): Promise<unknown>; unsplit(splitViewId: number): Promise<unknown> };
-const splitOf = (t: Tab) => (t as Tab & { splitViewId?: number }).splitViewId ?? -1;
+export const splitOf = (t: Tab) => (t as Tab & { splitViewId?: number }).splitViewId ?? -1;
 
 /** Puts the tab beside the current one and pairs them in a split view; either leaves any split it was in. */
 async function splitWith(tabId: number, ctxTabId?: number) {
