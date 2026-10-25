@@ -2,9 +2,10 @@
   import { onMount, tick } from 'svelte';
   import Chat from '@/components/Chat.svelte';
   import { interpret } from '@/lib/prefixes';
-  import { parseQuery, search, segments } from '@/lib/query';
+  import { search, segments } from '@/lib/query';
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
-  import { gridStep, parseTool, type Tool } from '@/lib/tools';
+  import { activeChip, EMOJI_COLS, step, TOOL_KINDS, type PaletteEvent } from '@/lib/palette';
+  import { parseTool, type Tool } from '@/lib/tools';
   import { toast } from '@/lib/toast';
   import type { Filter, Item, Message, TabAction } from '@/lib/types';
 
@@ -60,12 +61,10 @@
     tab: 'Tabs', command: 'Commands', bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed',
   };
   const SOURCES: Partial<Record<Filter, string>> = { bookmark: 'Bookmarks', history: 'History', download: 'Downloads', closed: 'Recently closed' };
-  const EMOJI_COLS = 10;
   const SKIN_TONES: [string, string][] = [
     ['Default', '#ffc83d'], ['Light', '#f7dece'], ['Medium-Light', '#e0bb95'], ['Medium', '#bf8f68'], ['Medium-Dark', '#9b643d'], ['Dark', '#594539'],
   ];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const TOOL_KINDS = new Set<Item['kind']>(['emoji', 'todo', 'feed', 'weather']);
   const TOOL_HINTS: Record<Tool, string> = {
     emoji: '←↑↓→ move · ↵ copy · ⇧↵ copy :code: · Esc back to tools',
     todo: '↵ add / check off · {mod}⌫ delete · Esc close',
@@ -92,8 +91,7 @@
   const chatMode = $derived(interpret(query)?.prefix.mode === 'chat');
   let chat = $state<Chat>();
   const results = $derived(tool ? toolResults : search(items, query, chip, settings.engines));
-  // A filter prefix (:h, :b…) lights its chip; picking a chip drops the prefix so the chip wins.
-  const active = $derived(parseQuery(query).filter ?? chip);
+  const active = $derived(activeChip({ query, chip }));
   const downloadsView = $derived(!tool && active === 'download');
   const emojiGrid = $derived(tool?.tool === 'emoji');
   const grouped = $derived(!tool && chip !== 'tools');
@@ -153,14 +151,7 @@
     setTimeout(onClose, 110);
   }
 
-  async function activate(item: Item | undefined, newTab: boolean) {
-    if (!item) return;
-    if (item.kind === 'prefix') {
-      query = item.command!;
-      sel = 0;
-      input.focus();
-      return;
-    }
+  async function activate(item: Item, newTab: boolean) {
     if (demo) return;
     if (item.kind === 'answer') {
       await copy(item.copy ?? item.title, 'Copied');
@@ -226,39 +217,28 @@
     close();
   }
 
-  function pick(f: Filter) {
-    const p = parseQuery(query);
-    if (p.filter) query = p.text;
-    chip = f;
-    sel = 0;
+  /** Applies step()'s next state and runs its effect; null when the event wasn't the palette's. */
+  function dispatch(ev: PaletteEvent) {
+    const view = { results, chips: CHIPS.map(([f]) => f), tool: tool?.tool, chat: chatMode, qr: !!qr, sections: sections.map((x) => x.start) };
+    const r = step({ query, chip, sel }, ev, view);
+    if (!r) return null;
+    const moved = r.state.sel !== sel;
+    ({ query, chip, sel } = r.state);
+    if (moved) select(sel);
+    const fx = r.effect;
+    if (fx?.do === 'close') close();
+    else if (fx?.do === 'run') activate(fx.item, fx.newTab);
+    else if (fx?.do === 'tab-close') tabAction('close', fx.item);
+    else if (fx?.do === 'tool-delete') send({ type: 'tool-delete', item: fx.item }).then(() => toolRev++);
+    return r;
   }
 
   function onkeydown(e: KeyboardEvent) {
-    const mod = isMac ? e.metaKey : e.ctrlKey;
-    const cur = results[sel];
     // A focused button (chip, row action, code Copy) gets its own Enter.
     if (e.key === 'Enter' && (e.target as Element).closest('button')) return;
-    if (e.key === 'Escape' && emojiGrid) {
-      query = '';
-      chip = 'tools';
-      sel = 0;
-    } else if (e.key === 'Escape') close();
-    else if (chatMode) {
-      if (!chat?.key(e, mod)) return;
-    } else if (qr) return;
-    else if (emojiGrid && e.key === 'ArrowRight') select(sel + 1);
-    else if (emojiGrid && e.key === 'ArrowLeft') select(sel - 1);
-    else if (emojiGrid && (e.key === 'ArrowDown' || e.key === 'ArrowUp'))
-      select(gridStep(sections.map((x) => x.start), results.length, EMOJI_COLS, sel, e.key === 'ArrowDown' ? 1 : -1));
-    else if (e.key === 'ArrowDown') select(sel + 1);
-    else if (e.key === 'ArrowUp') select(sel - 1);
-    else if (e.key === 'Enter') activate(cur, !e.shiftKey);
-    else if (e.key === 'Backspace' && mod && cur?.kind === 'tab') tabAction('close', cur);
-    else if (e.key === 'Backspace' && mod && cur && TOOL_KINDS.has(cur.kind)) send({ type: 'tool-delete', item: cur }).then(() => toolRev++);
-    else if (e.key === 'Tab' && !tool) {
-      const i = CHIPS.findIndex(([f]) => f === active);
-      pick(CHIPS[(i + (e.shiftKey ? CHIPS.length - 1 : 1)) % CHIPS.length]![0]);
-    } else return;
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const r = dispatch({ type: 'key', key: e.key, shift: e.shiftKey, mod });
+    if (!r || (r.effect?.do === 'chat' && !chat?.key(e, mod))) return;
     e.preventDefault();
   }
 
@@ -299,7 +279,7 @@
     {:else if !tool}
       <div class="chips">
         {#each CHIPS as [f, label]}
-          <button class:on={active === f} onclick={() => { pick(f); input.focus(); }}>{label}</button>
+          <button class:on={active === f} onclick={() => { dispatch({ type: 'pick', chip: f }); input.focus(); }}>{label}</button>
         {/each}
       </div>
     {/if}
@@ -349,7 +329,7 @@
           aria-selected={i === sel}
           class:sel={i === sel}
           onmousemove={() => (sel = i)}
-          onclick={(e) => activate(item, !e.shiftKey)}
+          onclick={(e) => { if (!dispatch({ type: 'activate', item, newTab: !e.shiftKey })?.effect) input.focus(); }}
         >
           {#if item.icon}
             <span class="glyph icon">{item.icon}</span>

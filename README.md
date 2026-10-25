@@ -62,7 +62,7 @@ Everything except keys syncs through `chrome.storage.sync`.
 /background.ts` does all the browser API work, `lib/commands.ts` has the tab
 commands, `lib/prefixes.ts` is the one table of `:` prefixes and their parse,
 `lib/query.ts` does the fuzzy ranking (both pure, tested), and
-`components/Palette.svelte` is the UI, `lib/page.ts` has page commands and screenshots, and
+`components/Palette.svelte` is the UI (its key and chip logic is the pure `step()` in `lib/palette.ts`), `lib/page.ts` has page commands and screenshots, and
 `ruler.content.ts` is the ruler overlay. `lib/tools.ts` has the pure tool logic (tested) and
 `lib/toolbox.ts` the storage/network side, which runs in the background. `lib/settings.ts` holds
 settings, themes and the provider catalog; `lib/ai.ts` streams chats over a runtime port;
