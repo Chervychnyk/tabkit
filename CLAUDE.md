@@ -1,0 +1,2 @@
+- Code map and commands: `README.md` (Layout section). `npm run verify` is the pre-commit gate.
+- Browser testing: the `extension-e2e` skill.

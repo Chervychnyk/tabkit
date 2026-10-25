@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "agent-browser": {
+      "type": "stdio",
+      "command": "agent-browser",
+      "args": ["mcp", "--tools", "core,debug"],
+      "env": {}
+    }
+  }
+}

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Type check, unit tests and build must pass before every commit.
+exec npm run verify --silent
