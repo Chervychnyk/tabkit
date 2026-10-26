@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ago, dedupeHistory, fileSize, groupByKind, pageKey, parseQuery, search, looksLikeUrl, segments, TOOL_ITEMS } from './query.ts';
+import { ago, dedupePages, fileSize, groupByKind, pageKey, parseQuery, search, looksLikeUrl, segments, TOOL_ITEMS } from './query.ts';
 import type { Filter, Item } from './types.ts';
 
 const items: Item[] = [
@@ -95,11 +95,16 @@ test('pageKey: same page under different URLs shares a key', () => {
   assert.notEqual(pageKey('', 'https://a.com/1'), pageKey('', 'https://a.com/2'));
 });
 
-test('dedupeHistory: newest URL per page wins, pages open in a tab carry its id', () => {
+test('dedupePages: newest URL per page wins, pages open in a tab carry its id', () => {
   const h = (url: string, title = 'Rails - Grafana') => ({ url, title });
   const history = [h('https://g.io/d?from=6h'), h('https://g.io/d?from=1h'), h('https://g.io/x', 'Other'), h('https://meet.google.com/a', 'Meet - sync'), h('https://meet.google.com/meet/a', 'Meet - sync')];
   const tabs = [{ ...h('https://meet.google.com/meet/a?hs=1', 'Meet - sync'), id: 7 }, { ...h('https://g.io/x', ''), id: 9 }];
-  assert.deepEqual(dedupeHistory(history, tabs).map((i) => `${i.url}${i.openTab ? ` tab ${i.openTab}` : ''}`), ['https://g.io/d?from=6h', 'https://g.io/x tab 9', 'https://meet.google.com/a tab 7']);
+  assert.deepEqual(dedupePages(history, tabs).map((i) => `${i.url}${i.openTab ? ` tab ${i.openTab}` : ''}`), ['https://g.io/d?from=6h', 'https://g.io/x tab 9', 'https://meet.google.com/a tab 7']);
+});
+
+test('dedupePages without tabs: one entry per page, nothing flagged (recently closed)', () => {
+  const closed = [{ title: 'Meet - sync', url: 'https://meet.google.com/meet/a', sessionId: '3' }, { title: 'Meet - sync', url: 'https://meet.google.com/a', sessionId: '2' }, { title: 'Docs', url: 'https://d.io/', sessionId: '1' }];
+  assert.deepEqual(dedupePages(closed).map((c) => `${c.sessionId}${'openTab' in c ? ' open' : ''}`), ['3', '1']);
 });
 
 test('history of an open tab: only under History, not All', () => {

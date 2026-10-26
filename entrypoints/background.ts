@@ -3,7 +3,7 @@ import { COMMANDS, runTabAction, splitOf } from '@/lib/commands';
 import { allowLocalModels, listModels, onChatPort, targets } from '@/lib/ai';
 import { blobToDataUrl, notify } from '@/lib/page';
 import { parseProvided, providerItems, registerProvider, runProvided } from '@/lib/providers';
-import { ago, dedupeHistory, fileSize } from '@/lib/query';
+import { ago, dedupePages, fileSize } from '@/lib/query';
 import { DATA_SOURCES } from '@/lib/settings';
 import { toolDelete, toolItems, toolRun } from '@/lib/toolbox';
 import type { Item, Message, RunResult } from '@/lib/types';
@@ -129,15 +129,18 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   };
   walk(tree);
 
-  for (const h of dedupeHistory(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url, openTab: h.openTab });
+  for (const h of dedupePages(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url, openTab: h.openTab });
 
   for (const d of downloads) {
     const note = d.state === 'in_progress' ? 'Downloading…' : d.state === 'interrupted' ? 'Failed' : !d.exists ? 'File missing' : fileSize(d.fileSize || d.totalBytes);
     items.push({ id: `dl:${d.id}`, kind: 'download', title: d.filename.split(/[\\/]/).pop() || d.url, url: d.finalUrl || d.url, downloadId: d.id, note });
   }
 
+  // A page closed several times (a Meet call left and rejoined) shows once; windows keep their place.
+  const closedOnce = new Set(dedupePages(closed.flatMap((s) => (s.tab ? [s.tab] : []))).map((t) => t.sessionId));
   for (const s of closed) {
     const note = ago(s.lastModified * 1000); // sessions report seconds
+    if (s.tab && !closedOnce.has(s.tab.sessionId)) continue;
     if (s.tab) items.push({ id: `rc:${s.tab.sessionId}`, kind: 'closed', title: s.tab.title || s.tab.url || '', url: s.tab.url, sessionId: s.tab.sessionId, note });
     else if (s.window) items.push({ id: `rc:${s.window.sessionId}`, kind: 'closed', title: `Window (${s.window.tabs?.length ?? 0} tabs)`, sessionId: s.window.sessionId, note });
   }

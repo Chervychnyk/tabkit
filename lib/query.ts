@@ -91,11 +91,11 @@ export function pageKey(title = '', url = ''): string {
 
 type Page = { title?: string; url?: string };
 
-/** One entry per page, with the tab it's open in; history comes newest first, so the newest URL wins. */
-export function dedupeHistory<H extends Page>(history: H[], tabs: (Page & { id?: number })[]): (H & { openTab?: number })[] {
+/** One entry per page (history, recently closed), with the tab it's open in; lists come newest first, so the newest URL wins. */
+export function dedupePages<H extends Page>(pages: H[], tabs: (Page & { id?: number })[] = []): (H & { openTab?: number })[] {
   const open = new Map(tabs.flatMap((t) => [[t.url, t.id], [pageKey(t.title, t.url), t.id]]));
   const seen = new Set<string>();
-  return history.flatMap((h) => {
+  return pages.flatMap((h) => {
     const key = pageKey(h.title, h.url);
     if (seen.has(key)) return [];
     seen.add(key);
