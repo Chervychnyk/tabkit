@@ -29,8 +29,8 @@ export interface Item {
   icon?: string;
   /** tools: an image URL (e.g. a feed's site icon) shown instead of the favicon */
   image?: string;
-  /** history: the page is also open in a tab, so All leaves it to the tab and only History lists it */
-  open?: true;
+  /** history: the id of a tab showing this page; All leaves the page to that tab, and Enter switches to it */
+  openTab?: number;
   /** a short status shown instead of the host: a download's size or state, how long ago a tab was closed */
   note?: string;
   /** positions of the query's matched characters in title, for highlighting */

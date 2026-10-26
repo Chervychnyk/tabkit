@@ -129,7 +129,7 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   };
   walk(tree);
 
-  for (const h of dedupeHistory(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url, open: h.open });
+  for (const h of dedupeHistory(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url, openTab: h.openTab });
 
   for (const d of downloads) {
     const note = d.state === 'in_progress' ? 'Downloading…' : d.state === 'interrupted' ? 'Failed' : !d.exists ? 'File missing' : fileSize(d.fileSize || d.totalBytes);
@@ -151,11 +151,19 @@ async function countUse(id: string) {
   await browser.storage.local.set({ commandUses: { ...uses, [id]: (uses[id] ?? 0) + 1 } });
 }
 
+async function openUrl(url: string, ctx: Browser.tabs.Tab, newTab: boolean) {
+  await (newTab ? browser.tabs.create({ url, windowId: ctx.windowId, index: ctx.index + 1 }) : browser.tabs.update(ctx.id!, { url }));
+}
+
+async function focusTab(tabId: number, windowId: number) {
+  await browser.tabs.update(tabId, { active: true });
+  await browser.windows.update(windowId, { focused: true });
+}
+
 async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean): Promise<RunResult | void> {
   switch (item.kind) {
     case 'tab':
-      await browser.tabs.update(item.tabId!, { active: true });
-      return void (await browser.windows.update(item.windowId!, { focused: true }));
+      return focusTab(item.tabId!, item.windowId!);
     case 'command': {
       const ext = parseProvided(item.command!);
       if (ext) {
@@ -179,9 +187,12 @@ async function run(item: Item, ctx: Browser.tabs.Tab, newTab: boolean): Promise<
     }
     case 'closed':
       return void (await browser.sessions.restore(item.sessionId));
+    case 'history': {
+      // A page open in a tab switches to it, like the address bar; if that tab has closed since, open the URL.
+      const t = item.openTab === undefined ? undefined : await browser.tabs.get(item.openTab).catch(() => undefined);
+      return t ? focusTab(t.id!, t.windowId) : openUrl(item.url!, ctx, newTab);
+    }
     default:
-      await (newTab
-        ? browser.tabs.create({ url: item.url, windowId: ctx.windowId, index: ctx.index + 1 })
-        : browser.tabs.update(ctx.id!, { url: item.url }));
+      return openUrl(item.url!, ctx, newTab);
   }
 }

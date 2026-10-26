@@ -95,17 +95,17 @@ test('pageKey: same page under different URLs shares a key', () => {
   assert.notEqual(pageKey('', 'https://a.com/1'), pageKey('', 'https://a.com/2'));
 });
 
-test('dedupeHistory: newest URL per page wins, pages open in a tab are flagged', () => {
+test('dedupeHistory: newest URL per page wins, pages open in a tab carry its id', () => {
   const h = (url: string, title = 'Rails - Grafana') => ({ url, title });
   const history = [h('https://g.io/d?from=6h'), h('https://g.io/d?from=1h'), h('https://g.io/x', 'Other'), h('https://meet.google.com/a', 'Meet - sync'), h('https://meet.google.com/meet/a', 'Meet - sync')];
-  const tabs = [h('https://meet.google.com/meet/a?hs=1', 'Meet - sync'), h('https://g.io/x', '')];
-  assert.deepEqual(dedupeHistory(history, tabs).map((i) => `${i.url}${i.open ? ' open' : ''}`), ['https://g.io/d?from=6h', 'https://g.io/x open', 'https://meet.google.com/a open']);
+  const tabs = [{ ...h('https://meet.google.com/meet/a?hs=1', 'Meet - sync'), id: 7 }, { ...h('https://g.io/x', ''), id: 9 }];
+  assert.deepEqual(dedupeHistory(history, tabs).map((i) => `${i.url}${i.openTab ? ` tab ${i.openTab}` : ''}`), ['https://g.io/d?from=6h', 'https://g.io/x tab 9', 'https://meet.google.com/a tab 7']);
 });
 
 test('history of an open tab: only under History, not All', () => {
   const pool: Item[] = [
     { id: 't', kind: 'tab', title: 'agent-browser', url: 'http://localhost:4848/' },
-    { id: 'h', kind: 'history', title: 'agent-browser', url: 'http://localhost:4848/', open: true },
+    { id: 'h', kind: 'history', title: 'agent-browser', url: 'http://localhost:4848/', openTab: 1 },
   ];
   const ids = (q: string, chip?: Filter) => search(pool, q, chip).filter((i) => i.kind !== 'search').map((i) => i.id);
   assert.deepEqual(ids('agent'), ['t']);

@@ -38,7 +38,7 @@ export function parseQuery(q: string): { filter: Filter | null; text: string } {
 
 function matches(item: Item, f: Filter): boolean {
   // Downloads only show under :d or their filter; history of an open tab only under History, as the tab lists it.
-  if (f === 'all') return item.kind !== 'download' && !item.open;
+  if (f === 'all') return item.kind !== 'download' && item.openTab === undefined;
   if (f === 'tab') return item.kind === 'tab' || item.kind === 'command';
   if (f === 'pinned') return item.kind === 'tab' && !!item.pinned;
   return item.kind === f;
@@ -91,15 +91,16 @@ export function pageKey(title = '', url = ''): string {
 
 type Page = { title?: string; url?: string };
 
-/** One entry per page, flagging pages open in a tab; history comes newest first, so the newest URL wins. */
-export function dedupeHistory<H extends Page>(history: H[], tabs: Page[]): (H & { open?: true })[] {
-  const open = new Set(tabs.flatMap((t) => [t.url, pageKey(t.title, t.url)]));
+/** One entry per page, with the tab it's open in; history comes newest first, so the newest URL wins. */
+export function dedupeHistory<H extends Page>(history: H[], tabs: (Page & { id?: number })[]): (H & { openTab?: number })[] {
+  const open = new Map(tabs.flatMap((t) => [[t.url, t.id], [pageKey(t.title, t.url), t.id]]));
   const seen = new Set<string>();
   return history.flatMap((h) => {
     const key = pageKey(h.title, h.url);
     if (seen.has(key)) return [];
     seen.add(key);
-    return open.has(h.url) || open.has(key) ? [{ ...h, open: true as const }] : [h];
+    const openTab = open.get(h.url) ?? open.get(key);
+    return openTab === undefined ? [h] : [{ ...h, openTab }];
   });
 }
 
