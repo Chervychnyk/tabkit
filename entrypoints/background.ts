@@ -129,7 +129,7 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   };
   walk(tree);
 
-  for (const h of dedupeHistory(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url });
+  for (const h of dedupeHistory(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url, open: h.open });
 
   for (const d of downloads) {
     const note = d.state === 'in_progress' ? 'Downloading…' : d.state === 'interrupted' ? 'Failed' : !d.exists ? 'File missing' : fileSize(d.fileSize || d.totalBytes);
