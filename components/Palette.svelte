@@ -398,7 +398,7 @@
   }
   .panel {
     position: absolute; top: 12cqh; left: 50%; transform: translateX(-50%);
-    width: min(680px, calc(100cqw - 32px)); max-height: 70cqh;
+    width: min(680px, calc(100cqw - 32px)); max-height: min(70cqh, 560px);
     display: flex; flex-direction: column;
     background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden;
@@ -406,7 +406,7 @@
   .layout-spotlight .panel { top: 20cqh; width: min(760px, calc(100cqw - 32px)); border-radius: 16px; }
   .layout-spotlight input { font-size: 22px; padding: 20px 22px; }
   .layout-notch { background: transparent; }
-  .layout-notch .panel { top: 0; width: min(620px, calc(100cqw - 32px)); max-height: 60cqh; border-top: 0; border-radius: 0 0 16px 16px; }
+  .layout-notch .panel { top: 0; width: min(620px, calc(100cqw - 32px)); max-height: min(60cqh, 520px); border-top: 0; border-radius: 0 0 16px 16px; }
   .layout-notch input { font-size: 15px; padding: 12px 16px; }
   .standalone { background: var(--bg); }
   /* Open/close: fade the backdrop, lift the panel. */
