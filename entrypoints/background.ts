@@ -1,7 +1,7 @@
 import type { Browser } from 'wxt/browser';
 import { COMMANDS, runTabAction, splitOf } from '@/lib/commands';
 import { allowLocalModels, listModels, onChatPort, targets } from '@/lib/ai';
-import { notify } from '@/lib/page';
+import { blobToDataUrl, notify } from '@/lib/page';
 import { parseProvided, providerItems, registerProvider, runProvided } from '@/lib/providers';
 import { ago, dedupeHistory, fileSize } from '@/lib/query';
 import { DATA_SOURCES } from '@/lib/settings';
@@ -83,11 +83,10 @@ const HANDLERS = {
   'ai-targets': () => targets(),
   'ai-models': (msg) => listModels(msg.provider, msg.baseUrl, msg.key),
   'open-settings': () => browser.runtime.openOptionsPage(),
-  // A page's service worker can intercept the palette's own _favicon requests and reject them (Meet does,
-  // over Cross-Origin-Resource-Policy); fetched here they never touch the page, and come back as a data: URL.
+  // Fetched here, outside the page, a favicon can't be blocked by it (see lib/icons.ts).
   favicon: async (msg) => {
     const r = await fetch(browser.runtime.getURL(`/_favicon/?pageUrl=${encodeURIComponent(msg.url)}&size=32`));
-    return `data:${r.headers.get('content-type') ?? 'image/png'};base64,${btoa(String.fromCharCode(...new Uint8Array(await r.arrayBuffer())))}`;
+    return blobToDataUrl(await r.blob());
   },
 } satisfies Handlers;
 

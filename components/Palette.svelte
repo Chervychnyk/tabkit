@@ -6,6 +6,7 @@
   import { DEFAULT_SETTINGS, themeStyle, type Settings } from '@/lib/settings';
   import { activeChip, EMOJI_COLS, step, type PaletteEvent } from '@/lib/palette';
   import { parseTool, toolOf, TOOLS } from '@/lib/tools';
+  import { iconLoader } from '@/lib/icons';
   import { send } from '@/lib/messages';
   import { toast } from '@/lib/toast';
   import type { Filter, Item, Message, TabAction } from '@/lib/types';
@@ -249,20 +250,7 @@
     try { return new URL(url).host; } catch { return url; }
   }
   const favicon = (url: string) => `chrome-extension://${browser.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
-  // Some pages block the extension URL (see the favicon handler in background.ts). After the first failure,
-  // every icon comes from the background, so the page's service worker isn't hit (and rejects) once per row.
-  // Plain, not $state: icons that already loaded keep their src.
-  let iconsBlocked = false;
-  const icon = (url: string) => (img: HTMLImageElement) => {
-    const viaBackground = () => send({ type: 'favicon', url }).then((src) => (img.src = src), () => {});
-    if (iconsBlocked) return void viaBackground();
-    img.onerror = () => {
-      img.onerror = null; // if the data: URL fails too (a CSP without data:), stop there
-      iconsBlocked = true;
-      viaBackground();
-    };
-    img.src = favicon(url);
-  };
+  const icon = iconLoader(favicon, (url) => send({ type: 'favicon', url }));
 </script>
 
 {#snippet svg(icon: string)}
