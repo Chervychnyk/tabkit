@@ -249,6 +249,20 @@
     try { return new URL(url).host; } catch { return url; }
   }
   const favicon = (url: string) => `chrome-extension://${browser.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
+  // Some pages block the extension URL (see the favicon handler in background.ts). After the first failure,
+  // every icon comes from the background, so the page's service worker isn't hit (and rejects) once per row.
+  // Plain, not $state: icons that already loaded keep their src.
+  let iconsBlocked = false;
+  const icon = (url: string) => (img: HTMLImageElement) => {
+    const viaBackground = () => send({ type: 'favicon', url }).then((src) => (img.src = src), () => {});
+    if (iconsBlocked) return void viaBackground();
+    img.onerror = () => {
+      img.onerror = null; // if the data: URL fails too (a CSP without data:), stop there
+      iconsBlocked = true;
+      viaBackground();
+    };
+    img.src = favicon(url);
+  };
 </script>
 
 {#snippet svg(icon: string)}
@@ -344,7 +358,7 @@
           {:else if item.color}
             <span class="swatch" style:background={item.color}></span>
           {:else if item.url && !GLYPH[item.kind]}
-            <img src={favicon(item.url)} alt="" width="16" height="16" />
+            <img alt="" width="16" height="16" {@attach icon(item.url)} />
           {:else if item.kind === 'prefix'}
             <span class="glyph key">{item.command!.trim()}</span>
           {:else}

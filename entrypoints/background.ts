@@ -83,6 +83,12 @@ const HANDLERS = {
   'ai-targets': () => targets(),
   'ai-models': (msg) => listModels(msg.provider, msg.baseUrl, msg.key),
   'open-settings': () => browser.runtime.openOptionsPage(),
+  // A page's service worker can intercept the palette's own _favicon requests and reject them (Meet does,
+  // over Cross-Origin-Resource-Policy); fetched here they never touch the page, and come back as a data: URL.
+  favicon: async (msg) => {
+    const r = await fetch(browser.runtime.getURL(`/_favicon/?pageUrl=${encodeURIComponent(msg.url)}&size=32`));
+    return `data:${r.headers.get('content-type') ?? 'image/png'};base64,${btoa(String.fromCharCode(...new Uint8Array(await r.arrayBuffer())))}`;
+  },
 } satisfies Handlers;
 
 /** The reply each message type resolves to. */

@@ -53,4 +53,5 @@ export type Message =
   | { type: 'tool-delete'; item: Item }
   | { type: 'ai-targets' }
   | { type: 'ai-models'; provider: string; baseUrl?: string; key?: string }
+  | { type: 'favicon'; url: string }
   | { type: 'open-settings' };
