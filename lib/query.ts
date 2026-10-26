@@ -83,6 +83,24 @@ export function ago(ms: number, now = Date.now()): string {
   return m < 1440 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
 }
 
+/** Host + title: one page that saves many URLs (Meet's two paths, Grafana's time ranges) gets one key. */
+export function pageKey(title = '', url = ''): string {
+  return title ? `${URL.parse(url)?.host ?? url}\n${title}` : url; // untitled pages show their URL, so keep each one
+}
+
+type Page = { title?: string; url?: string };
+
+/** One entry per page, skipping pages open in a tab; history comes newest first, so the newest URL wins. */
+export function dedupeHistory<H extends Page>(history: H[], tabs: Page[]): H[] {
+  const seen = new Set(tabs.flatMap((t) => [t.url, pageKey(t.title, t.url)]));
+  return history.filter((h) => {
+    const key = pageKey(h.title, h.url);
+    if (seen.has(h.url) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** Stable group by kind, groups in order of first appearance, so the best match's group leads. */
 export function groupByKind(list: Item[]): Item[] {
   const groups = new Map<string, Item[]>();

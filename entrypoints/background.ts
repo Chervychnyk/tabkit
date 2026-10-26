@@ -2,7 +2,7 @@ import type { Browser } from 'wxt/browser';
 import { COMMANDS, runTabAction, splitOf } from '@/lib/commands';
 import { allowLocalModels, listModels, onChatPort, targets } from '@/lib/ai';
 import { notify } from '@/lib/page';
-import { ago, fileSize } from '@/lib/query';
+import { ago, dedupeHistory, fileSize } from '@/lib/query';
 import { DATA_SOURCES } from '@/lib/settings';
 import { toolDelete, toolItems, toolRun } from '@/lib/toolbox';
 import type { Item, Message, RunResult } from '@/lib/types';
@@ -114,9 +114,7 @@ async function load(current?: number): Promise<{ items: Item[]; missing: string[
   };
   walk(tree);
 
-  const open = new Set(tabs.map((t) => t.url));
-  for (const h of history)
-    if (!open.has(h.url)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url });
+  for (const h of dedupeHistory(history, tabs)) items.push({ id: `h:${h.id}`, kind: 'history', title: h.title || h.url!, url: h.url });
 
   for (const d of downloads) {
     const note = d.state === 'in_progress' ? 'Downloading…' : d.state === 'interrupted' ? 'Failed' : !d.exists ? 'File missing' : fileSize(d.fileSize || d.totalBytes);

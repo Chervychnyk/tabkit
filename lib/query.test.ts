@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ago, fileSize, groupByKind, parseQuery, search, looksLikeUrl, segments, TOOL_ITEMS } from './query.ts';
+import { ago, dedupeHistory, fileSize, groupByKind, pageKey, parseQuery, search, looksLikeUrl, segments, TOOL_ITEMS } from './query.ts';
 import type { Item } from './types.ts';
 
 const items: Item[] = [
@@ -85,4 +85,19 @@ test('fileSize and ago', () => {
   assert.equal(ago(now - 18 * 60_000, now), '18m ago');
   assert.equal(ago(now - 3 * 3600_000, now), '3h ago');
   assert.equal(ago(now - 50 * 3600_000, now), '2d ago');
+});
+
+test('pageKey: same page under different URLs shares a key', () => {
+  const k = pageKey('Meet - sync', 'https://meet.google.com/oti-kihn-ihw?authuser=a');
+  assert.equal(pageKey('Meet - sync', 'https://meet.google.com/meet/oti-kihn-ihw?hs=49'), k);
+  assert.notEqual(pageKey('Meet - standup', 'https://meet.google.com/oti-kihn-ihw'), k);
+  assert.notEqual(pageKey('Meet - sync', 'https://example.com/'), k);
+  assert.notEqual(pageKey('', 'https://a.com/1'), pageKey('', 'https://a.com/2'));
+});
+
+test('dedupeHistory: newest URL per page wins, open tabs hide theirs', () => {
+  const h = (url: string, title = 'Rails - Grafana') => ({ url, title });
+  const history = [h('https://g.io/d?from=6h'), h('https://g.io/d?from=1h'), h('https://g.io/x', 'Other'), h('https://meet.google.com/a', 'Meet - sync')];
+  const tabs = [h('https://meet.google.com/meet/a?hs=1', 'Meet - sync'), h('https://g.io/x', '')];
+  assert.deepEqual(dedupeHistory(history, tabs).map((i) => i.url), ['https://g.io/d?from=6h']);
 });
