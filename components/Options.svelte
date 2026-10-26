@@ -352,6 +352,8 @@
   nav a[aria-current='page'] { background: var(--active); color: var(--text); font-weight: 500; }
 
   main { padding: 36px 40px 64px; width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; }
+  /* Only Appearance has content (theme grid, preview) that uses a wide screen; forms stay readable at 1080. */
+  main:has(.appearance) { max-width: 1440px; }
   header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
   h1 { font-size: 24px; line-height: 32px; font-weight: 600; margin: 0; }
   .lede { color: var(--muted); margin: 4px 0 0; max-width: 640px; }
